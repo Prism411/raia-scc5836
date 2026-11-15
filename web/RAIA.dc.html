@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAIA · natação universitária em dados</title>
+<meta name="description" content="RAIA: visualização computacional da natação InterUSP e TUSCA 2023–2026.">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./vendor/fonts.css">
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<script src="./config.js"></script>
+<script src="./support.js"></script>
+<script src="./raia-conta.js" defer></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html,body{margin:0;height:100%;background:#031021;color:#eaf6ff;font-family:Barlow,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#2FE0F0;text-decoration:none}a:hover{color:#FFD23F}
+::selection{background:#FFD23F;color:#041226}
+input,select,button,textarea{font:inherit;color:inherit}
+select option{background:#071a2e;color:#eaf6ff}
+input[type=range]{accent-color:#FFD23F}
+input:focus,select:focus,button:focus-visible{outline:2px solid #2FE0F0;outline-offset:1px}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#123251}::-webkit-scrollbar-track{background:transparent}[data-noscroll]::-webkit-scrollbar{display:none}
+@keyframes raiaPulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes raiaCapy{0%{transform:translateX(-70px)}100%{transform:translateX(250px)}}
+@media (max-width:760px){
+header{height:auto!important;flex-wrap:wrap!important;gap:6px 8px!important;padding:7px 12px 0!important}
+header>nav{order:5;flex:1 1 calc(100% - 140px)!important;height:38px!important}
+header>label{order:6;height:38px}
+header>label>select{width:96px!important}
+header>div{flex:1 1 60px!important;min-width:0}
+header>div>input{width:100%!important}
+header>button:nth-of-type(2){padding:0 4px!important}
+header>button:nth-of-type(2)>span:last-child{display:none}
+}
+</style>
+</helmet>
+<svg width="0" height="0" style="position:absolute;width:0;height:0" aria-hidden="true">
+  <defs>
+    <filter id="cvd-protan"><feColorMatrix type="matrix" values="0.567 0.433 0 0 0 0.558 0.442 0 0 0 0 0.242 0.758 0 0 0 0 0 1 0"></feColorMatrix></filter>
+    <filter id="cvd-deutan"><feColorMatrix type="matrix" values="0.625 0.375 0 0 0 0.7 0.3 0 0 0 0 0.3 0.7 0 0 0 0 0 1 0"></feColorMatrix></filter>
+    <filter id="cvd-tritan"><feColorMatrix type="matrix" values="0.95 0.05 0 0 0 0 0.433 0.567 0 0 0 0.475 0.525 0 0 0 0 0 1 0"></feColorMatrix></filter>
+    <filter id="cvd-achro"><feColorMatrix type="matrix" values="0.299 0.587 0.114 0 0 0.299 0.587 0.114 0 0 0.299 0.587 0.114 0 0 0 0 0 1 0"></feColorMatrix></filter>
+  </defs>
+</svg>
+<div style="position:fixed;inset:0;display:flex;flex-direction:column;background:#031021;color:#eaf6ff;font-family:Barlow,system-ui,sans-serif;filter:{{ cvdFilter }}">
+
+  <header style="height:58px;flex:none;display:flex;align-items:center;gap:16px;padding:0 16px;border-bottom:1px solid rgba(141,179,207,.14);background:#031021;position:relative;z-index:6">
+    <button onClick="{{ goHome }}" style="display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;flex:none">
+      <span style="display:flex;flex-direction:column;gap:3px">
+        <span style="display:block;width:22px;height:3px;background:#FF5468"></span>
+        <span style="display:block;width:22px;height:3px;background:#2FE0F0"></span>
+        <span style="display:block;width:22px;height:3px;background:#FFD23F"></span>
+      </span>
+      <span style="font:900 27px/1 'Big Shoulders Display',Impact,sans-serif;letter-spacing:.05em;color:#eaf6ff">RAIA</span>
+    </button>
+    <nav data-noscroll="" style="display:flex;gap:0;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;height:100%;align-items:stretch">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="6">
+        <button onClick="{{ t.go }}" style="flex:none;display:flex;align-items:center;gap:6px;padding:0 10px;background:none;border:0;border-bottom:2px solid {{ t.line }};color:{{ t.color }};cursor:pointer;font:700 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">
+<span aria-hidden="true" style="width:17px;height:17px;flex:none;display:block;background-image:{{ t.bg }};background-size:contain;background-repeat:no-repeat"></span>{{ t.label }}
+        </button>
+      </sc-for>
+    </nav>
+    <div style="position:relative;flex:none">
+      <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Buscar atleta…" aria-label="Buscar atleta" style="width:150px;height:30px;background:#071a2e;border:1px solid rgba(141,179,207,.25);padding:0 10px;font:500 12.5px Barlow,sans-serif;border-radius:2px">
+      <div style="position:absolute;right:0;top:36px;width:320px;max-width:90vw;display:{{ qDisplay }};flex-direction:column;background:#041226;border:1px solid rgba(47,224,240,.45);box-shadow:0 14px 40px rgba(0,0,0,.55);z-index:30">
+        <sc-for list="{{ qHits }}" as="r" hint-placeholder-count="0"><button onClick="{{ r.on }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:none;border:0;border-bottom:1px solid rgba(141,179,207,.1);color:#eaf6ff;cursor:pointer;text-align:left;font:600 13px/1.2 Barlow,sans-serif"><span>{{ r.name }}</span><span style="color:{{ r.c }};font:500 10.5px/1.2 'JetBrains Mono',monospace;white-space:nowrap">{{ r.meta }}</span></button></sc-for>
+      </div>
+    </div>
+    <label title="Simulador de daltonismo" style="display:flex;align-items:center;gap:6px;flex:none;font:500 10px/1 'JetBrains Mono',monospace;color:#8db3cf;letter-spacing:.08em;text-transform:uppercase">
+      <span aria-hidden="true" style="width:14px;height:14px;border-radius:50%;background:conic-gradient(#E69F00 0 25%,#56B4E9 0 50%,#009E73 0 75%,#CC79A7 0)"></span>
+      <select value="{{ cvd }}" onChange="{{ onCvd }}" style="height:30px;width:104px;background:#071a2e;border:1px solid rgba(141,179,207,.25);color:#eaf6ff;padding:0 6px;font:500 12px Barlow,sans-serif;border-radius:2px">
+        <option value="none">Normal</option>
+        <option value="protan">Simular protanopia</option>
+        <option value="deutan">Simular deuteranopia</option>
+        <option value="tritan">Simular tritanopia</option>
+        <option value="achro">Simular acromatopsia</option>
+      </select>
+    </label>
+    <button onClick="{{ goVest }}" style="flex:none;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px 0 4px;background:#071a2e;border:1px solid rgba(255,210,63,.45);cursor:pointer;border-radius:2px">
+      <span style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#FFD23F;color:#041226;font:800 11px/1 'Big Shoulders Display',sans-serif;border-radius:50%">{{ avatarSigla }}</span>
+      <span style="font:600 12.5px/1 Barlow,sans-serif;color:#FFD23F;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ avatarName }}</span>
+    </button>
+    <button onClick="{{ contaOn }}" title="{{ contaTitle }}" data-raia-conta="" style="flex:none;height:34px;padding:0 10px;background:none;border:1px solid {{ contaBd }};color:{{ contaFg }};cursor:pointer;border-radius:2px;font:700 14px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">{{ contaLabel }}</button>
+  </header>
+
+  <main style="flex:1;position:relative;overflow:hidden;min-height:0">
+
+    <section data-screen-label="Arena 3D" style="position:absolute;inset:0;display:{{ stageDisplay }}">
+      <div ref="{{ arenaRef }}" style="position:absolute;inset:0;background:#041226;overflow:hidden"></div>
+
+      <div style="position:absolute;inset:0;display:{{ heroDisplay }};pointer-events:none;background:linear-gradient(90deg,rgba(3,16,33,.94) 0%,rgba(3,16,33,.55) 36%,rgba(3,16,33,0) 64%)">
+        <div style="pointer-events:auto;position:absolute;left:clamp(20px,5vw,72px);bottom:clamp(24px,7vh,84px);max-width:620px;display:flex;flex-direction:column;gap:18px;padding-right:20px">
+          <div style="font:600 11px/1.4 'JetBrains Mono',monospace;letter-spacing:.16em;color:#2FE0F0;text-transform:uppercase">SCC5836 · Visualização Computacional · ICMC–USP</div>
+          <h1 style="margin:0;font:900 clamp(92px,15vw,210px)/.82 'Big Shoulders Display',Impact,sans-serif;letter-spacing:.01em;color:#eaf6ff">RAIA<span style="color:#FFD23F">.</span></h1>
+          <p style="margin:0;font:500 clamp(16px,1.6vw,20px)/1.4 Barlow,sans-serif;color:#cfe3f2;max-width:500px;text-wrap:pretty">InterUSP e TUSCA 2023–2026 numa piscina 3D. Monte seu nadador e nade contra os reais.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <button onClick="{{ goVest }}" style="height:48px;padding:0 22px;background:#FFD23F;color:#041226;border:0;cursor:pointer;font:800 17px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-radius:2px;white-space:nowrap">Criar meu nadador →</button>
+            <button onClick="{{ goRaio }}" style="height:48px;padding:0 18px;background:rgba(4,18,38,.6);color:#eaf6ff;border:1px solid rgba(234,246,255,.35);cursor:pointer;font:700 16px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-radius:2px;white-space:nowrap">Raio-X da prova</button>
+            <button onClick="{{ goCalc }}" style="height:48px;padding:0 18px;background:rgba(4,18,38,.6);color:#eaf6ff;border:1px solid rgba(234,246,255,.35);cursor:pointer;font:700 16px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-radius:2px;white-space:nowrap">{{ heroBtn3 }}</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:0;border-top:1px solid rgba(141,179,207,.22);padding-top:14px">
+            <sc-for list="{{ heroStats }}" as="s" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:4px;padding-right:26px;margin-right:26px;border-right:1px solid rgba(141,179,207,.16)">
+                <span style="font:800 30px/1 'Big Shoulders Display',sans-serif;color:#eaf6ff">{{ s.v }}</span>
+                <span style="font:500 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8db3cf">{{ s.l }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:absolute;inset:0;display:{{ arenaUIDisplay }};pointer-events:none">
+        <div style="position:absolute;inset:0;display:{{ hudDisplay }};pointer-events:none">
+          <div style="pointer-events:auto;position:absolute;left:14px;top:14px;max-height:calc(100% - {{ panelBottom }} - 14px);width:min(320px,calc(100% - 28px));display:{{ setupDisplay }};flex-direction:column;background:rgba(4,18,38,.94);border:1px solid rgba(141,179,207,.18);overflow-y:auto;overflow-x:hidden">
+            <div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 12px 4px">
+              <span style="font:800 18px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">Sua prova</span>
+              <button onClick="{{ toggleSetup }}" aria-label="Fechar" style="width:28px;height:28px;background:none;border:1px solid rgba(141,179,207,.25);color:#8db3cf;cursor:pointer;border-radius:2px">✕</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;padding:4px 12px 12px">
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                <sc-for list="{{ aCompChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:30px;padding:0 11px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+                <span style="flex:1"></span>
+                <sc-for list="{{ aSexChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:30px;padding:0 11px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px">
+                <sc-for list="{{ aEventChips }}" as="c" hint-placeholder-count="10"><button onClick="{{ c.on }}" title="{{ c.title }}" style="height:28px;padding:0 2px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};opacity:{{ c.op }};font:700 11.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap;overflow:hidden">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                <sc-for list="{{ aModeChips }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.on }}" style="height:28px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <sc-if value="{{ aShowYears }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ aYearChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:26px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:500 11.5px/1 'JetBrains Mono',monospace;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <div style="display:flex;gap:6px;align-items:stretch">
+                  <button onClick="{{ aTimeMinus }}" aria-label="Menos" style="width:38px;background:rgba(141,179,207,.06);border:1px solid rgba(141,179,207,.22);color:#eaf6ff;cursor:pointer;font:600 16px/1 'JetBrains Mono',monospace;border-radius:2px">−</button>
+                  <input value="{{ aTime }}" onChange="{{ onATime }}" inputMode="decimal" placeholder="26.50" aria-label="Seu tempo" style="flex:1;min-width:0;height:38px;background:#031021;border:1px solid rgba(255,210,63,.55);color:#FFD23F;font:600 20px/1 'JetBrains Mono',monospace;text-align:center;border-radius:2px">
+                  <button onClick="{{ aTimePlus }}" aria-label="Mais" style="width:38px;background:rgba(141,179,207,.06);border:1px solid rgba(141,179,207,.22);color:#eaf6ff;cursor:pointer;font:600 16px/1 'JetBrains Mono',monospace;border-radius:2px">+</button>
+                </div>
+                <span style="font:500 11px/1.3 'JetBrains Mono',monospace;color:#8db3cf">{{ aTimeHint }}</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                <sc-for list="{{ aToggles }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:28px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <button onClick="{{ openTecArena }}" style="height:32px;border:1px solid {{ tecAChip.bd }};background:{{ tecAChip.bg }};color:{{ tecAChip.fg }};font:700 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px">Parciais, braçadas e submerso…</button>
+              <button onClick="{{ startRace }}" style="height:44px;background:#FFD23F;color:#041226;border:0;cursor:pointer;font:900 22px/1 'Big Shoulders Display',sans-serif;letter-spacing:.12em;text-transform:uppercase;border-radius:2px">{{ startLabel }}</button>
+            </div>
+          </div>
+
+          
+
+          <div ref="{{ liveRef }}" style="pointer-events:none;position:absolute;left:14px;top:104px;width:min(250px,calc(100% - 28px));max-width:calc(100% - 28px);display:{{ liveCardDisplay }};flex-direction:column;gap:8px;padding:10px 14px;background:rgba(4,18,38,.9);border:1px solid rgba(141,179,207,.22);box-shadow:0 10px 30px rgba(0,0,0,.35)"></div>
+
+          <div style="pointer-events:auto;position:absolute;left:{{ dockLeft }};right:14px;bottom:{{ panelBottom }};height:{{ dockH }};display:{{ dockDisplay }};flex-direction:column;background:rgba(3,14,29,.95);border:1px solid rgba(141,179,207,.2);box-shadow:0 -12px 40px rgba(0,0,0,.35)">
+            <div style="flex:none;display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid rgba(141,179,207,.14)">
+              <div style="flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px">
+                <sc-for list="{{ dockTabs }}" as="c" hint-placeholder-count="10"><button onClick="{{ c.on }}" style="flex:none;height:25px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <span style="flex:none;display:{{ liveDisplay }};align-items:center;gap:5px;font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#FF5468"><span style="width:7px;height:7px;border-radius:50%;background:#FF5468;animation:raiaPulse 1s infinite"></span>AO VIVO</span>
+              <span title="Fases, parciais e braçadas estimadas a partir do tempo final, calibradas com médias de nadadores de elite" style="flex:none;font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#56708a;cursor:help">ESTIMADO ⓘ</span>
+              <select ref="{{ d2selRef }}" value="{{ dock2Val }}" onChange="{{ onDock2 }}" aria-label="Segundo gráfico" title="Mostrar um segundo gráfico ao lado" style="flex:none;display:{{ d2selDisp }};height:28px;max-width:132px;background:#071a2e;border:1px solid rgba(47,224,240,.45);color:#2FE0F0;padding:0 4px;font:600 11.5px Barlow,sans-serif;border-radius:2px">
+                <sc-for list="{{ dock2Opts }}" as="f" hint-placeholder-count="1"><option value="{{ f.v }}">{{ f.l }}</option></sc-for>
+              </select>
+              <button onClick="{{ toggleDockMax }}" aria-label="Expandir" style="flex:none;width:28px;height:28px;background:none;border:1px solid rgba(141,179,207,.25);color:#cfe3f2;cursor:pointer;border-radius:2px">{{ dockMaxIcon }}</button>
+              <button onClick="{{ toggleDock }}" aria-label="Fechar" style="flex:none;width:28px;height:28px;background:none;border:1px solid rgba(141,179,207,.25);color:#8db3cf;cursor:pointer;border-radius:2px">✕</button>
+            </div>
+            <div style="flex:none;display:{{ dockLayDisp }};flex-wrap:wrap;gap:4px;padding:6px 8px 0">
+              <sc-for list="{{ dockLayers }}" as="c" hint-placeholder-count="0"><button onClick="{{ c.on }}" style="flex:none;height:24px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+            </div>
+            <div style="flex:1;min-height:0;position:relative">
+              <div ref="{{ dockRef }}" style="position:absolute;top:6px;bottom:4px;left:6px;right:{{ dock1Right }};display:{{ dockChartDisplay }}"></div>
+              <div ref="{{ dock2Ref }}" style="position:absolute;top:6px;bottom:4px;left:calc(50% + 4px);right:8px;display:{{ dock2Display }};border-left:1px solid rgba(141,179,207,.16);padding-left:8px"></div>
+              <div style="position:absolute;top:0;bottom:0;left:0;right:{{ dock1Right }};overflow-y:auto;padding:6px 10px;display:{{ dockResDisplay }};flex-direction:column;gap:2px">
+                <sc-for list="{{ resultRows }}" as="r" hint-placeholder-count="8">
+                  <div style="display:grid;grid-template-columns:30px 6px minmax(0,1fr) 74px 64px 74px;gap:8px;align-items:center;min-height:26px;padding:0 6px;background:{{ r.bg }};font:500 12.5px/1 Barlow,sans-serif">
+                    <span style="font:700 13px/1 'JetBrains Mono',monospace;color:{{ r.pc }}">{{ r.place }}</span>
+                    <span style="width:6px;height:18px;background:{{ r.color }}"></span>
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:{{ r.nc }};font-weight:600">{{ r.name }} <span style="color:#56708a;font-weight:500">· {{ r.team }}</span></span>
+                    <span style="font:600 12.5px/1 'JetBrains Mono',monospace;text-align:right;color:#eaf6ff">{{ r.time }}</span>
+                    <span style="font:500 11px/1 'JetBrains Mono',monospace;text-align:right;color:#8db3cf">{{ r.gap }}</span>
+                    <span title="tempo oficial de referência" style="font:500 10.5px/1 'JetBrains Mono',monospace;text-align:right;color:#56708a">{{ r.ref }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div ref="{{ barRef }}" style="pointer-events:auto;position:absolute;left:14px;right:14px;bottom:14px;margin:0 auto;width:max-content;max-width:calc(100% - 28px);display:flex;flex-wrap:wrap;justify-content:center;gap:6px;align-items:center;background:rgba(4,18,38,.94);border:1px solid rgba(141,179,207,.2);padding:6px">
+            <button onClick="{{ toggleSetup }}" style="display:{{ setupBtnDisplay }};height:32px;padding:0 10px;background:none;border:1px solid rgba(255,210,63,.5);color:#FFD23F;cursor:pointer;font:800 13px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-radius:2px;white-space:nowrap">☰ Prova</button>
+            <button onClick="{{ replay }}" aria-label="Reproduzir ou pausar" style="height:32px;min-width:42px;padding:0 10px;border:0;background:#FFD23F;color:#041226;font:800 14px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px">{{ playLabel }}</button>
+            <div style="display:{{ timelineDisplay }};flex:1 1 130px;min-width:120px;align-items:center;gap:6px">
+              <input ref="{{ scrubRef }}" type="range" min="0" max="{{ tmax }}" step="0.01" value="{{ scrub }}" onChange="{{ onScrub }}" aria-label="Linha do tempo" style="flex:1;min-width:60px;width:auto;max-width:240px">
+              <span ref="{{ scrubLblRef }}" style="font:600 12px/1 'JetBrains Mono',monospace;color:#2FE0F0;min-width:56px;text-align:right">{{ scrubLabel }}</span>
+            </div>
+            <button onClick="{{ cycleSpeed }}" title="Velocidade" style="height:32px;min-width:44px;padding:0 8px;border:1px solid rgba(47,224,240,.5);background:rgba(47,224,240,.1);color:#eaf6ff;font:600 12px/1 'JetBrains Mono',monospace;cursor:pointer;border-radius:2px;white-space:nowrap">{{ speedLabel }}</button>
+            <button onClick="{{ cycleCam }}" title="Trocar câmera" style="height:32px;padding:0 10px;display:flex;align-items:center;gap:6px;border:1px solid rgba(47,224,240,.5);background:rgba(47,224,240,.1);color:#eaf6ff;font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap"><span style="font:600 9px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#8db3cf">CÂM</span>{{ camLabel }}</button>
+            <div style="position:relative;flex:0 1 auto;min-width:0">
+              <button onClick="{{ toggleFList }}" title="A câmera acompanha o nadador escolhido" style="height:32px;max-width:132px;min-width:0;width:100%;padding:0 10px;display:block;background:{{ fBtnBg }};border:1px solid {{ fBtnBd }};color:{{ fBtnFg }};font:700 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ followLabel }}</button>
+              <div style="position:absolute;left:0;bottom:40px;min-width:210px;display:{{ fListDisp }};flex-direction:column;background:#041226;border:1px solid rgba(47,224,240,.45);box-shadow:0 -12px 36px rgba(0,0,0,.5);max-height:300px;overflow-y:auto">
+                <sc-for list="{{ followOpts }}" as="f" hint-placeholder-count="0"><button onClick="{{ f.on }}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:{{ f.bg }};border:0;border-bottom:1px solid rgba(141,179,207,.1);color:{{ f.fg }};cursor:pointer;text-align:left;font:600 12.5px/1.2 Barlow,sans-serif;white-space:nowrap"><span style="width:8px;height:8px;flex:none;background:{{ f.c }}"></span>{{ f.l }}</button></sc-for>
+              </div>
+            </div>
+            <button onClick="{{ toggleLive }}" title="Mostrar/ocultar telemetria ao vivo" style="height:32px;padding:0 10px;border:1px solid {{ liveChip.bd }};background:{{ liveChip.bg }};color:{{ liveChip.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">Telemetria</button>
+            <span style="width:1px;height:22px;background:rgba(141,179,207,.2);margin:0 2px"></span>
+            <button onClick="{{ toggleDock }}" style="height:32px;padding:0 12px;display:{{ dockBtnDisp }};align-items:center;gap:7px;border:1px solid {{ dockChip.bd }};background:{{ dockChip.bg }};color:{{ dockChip.fg }};font:700 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap"><span style="display:flex;align-items:flex-end;gap:2px;height:12px"><span style="width:3px;height:6px;background:currentColor"></span><span style="width:3px;height:12px;background:currentColor"></span><span style="width:3px;height:9px;background:currentColor"></span></span>Gráficos</button>
+            <button onClick="{{ toggleCube }}" style="height:32px;padding:0 10px;border:1px solid {{ cubeChip.bd }};background:{{ cubeChip.bg }};color:{{ cubeChip.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">Cubo 3D</button>
+            <button onClick="{{ toggleSound }}" title="Som (tecla M)" aria-label="Som" style="height:32px;min-width:36px;padding:0 8px;border:1px solid {{ sndChip.bd }};background:{{ sndChip.bg }};color:{{ sndChip.fg }};font:700 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ sndLabel }}</button>
+            <button onClick="{{ toggleHud }}" title="Ocultar interface (tecla H)" style="height:32px;padding:0 10px;border:1px solid rgba(141,179,207,.22);background:rgba(141,179,207,.06);color:#cfe3f2;font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">Ocultar</button>
+          </div>
+        </div>
+        <button onClick="{{ toggleHud }}" style="pointer-events:auto;position:absolute;right:14px;bottom:14px;display:{{ hudOffDisplay }};height:34px;padding:0 12px;background:rgba(4,18,38,.6);border:1px solid rgba(234,246,255,.3);color:#eaf6ff;cursor:pointer;font:600 12px/1 Barlow,sans-serif;border-radius:2px;white-space:nowrap">Mostrar interface · H</button>
+      </div>
+    </section>
+
+    <section data-screen-label="Vestiário" style="position:absolute;inset:0;display:{{ vestDisplay }};overflow:hidden">
+      <div style="height:100%;display:grid;grid-template-columns:{{ vestCols }};grid-template-rows:{{ vestRows }}">
+        <div style="position:relative;min-height:0;background:#041226;border-right:1px solid rgba(141,179,207,.12)">
+          <div ref="{{ vestRef }}" style="position:absolute;inset:0"></div>
+          <div style="position:absolute;left:20px;top:18px;display:flex;flex-direction:column;gap:6px;pointer-events:none">
+            <span style="font:900 clamp(36px,5vw,64px)/.9 'Big Shoulders Display',sans-serif;letter-spacing:.02em;color:#eaf6ff;text-transform:uppercase">{{ avatarName }}</span>
+            <span style="font:600 13px/1 Barlow,sans-serif;color:#FFD23F">{{ avatarTeamLabel }}</span>
+          </div>
+          <div style="position:absolute;right:14px;top:16px;display:flex;flex-direction:column;gap:5px;align-items:stretch">
+            <sc-for list="{{ poseChips }}" as="c" hint-placeholder-count="5"><button onClick="{{ c.on }}" style="height:30px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          </div>
+          <div style="position:absolute;left:20px;bottom:16px;font:500 10.5px/1.4 'JetBrains Mono',monospace;color:#56708a;pointer-events:none">arraste · role</div>
+        </div>
+        <div style="min-height:0;display:flex;flex-direction:column;background:#031021">
+          <div style="flex:none;display:flex;gap:0;border-bottom:1px solid rgba(141,179,207,.14);overflow-x:auto" data-noscroll="">
+            <sc-for list="{{ vCats }}" as="c" hint-placeholder-count="5"><button onClick="{{ c.on }}" style="flex:1 0 auto;height:46px;padding:0 14px;background:none;border:0;border-bottom:2px solid {{ c.line }};color:{{ c.color }};cursor:pointer;font:700 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">{{ c.label }}</button></sc-for>
+          </div>
+          <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:16px 18px">
+            <div style="display:{{ vc.id }};flex-direction:column;gap:12px">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px">
+                <input value="{{ avatarNameRaw }}" onChange="{{ onAvName }}" placeholder="Seu nome" maxLength="24" aria-label="Nome" style="height:42px;background:#071a2e;border:1px solid rgba(141,179,207,.25);padding:0 12px;font:600 15px Barlow,sans-serif;border-radius:2px">
+                <input value="{{ avatarSiglaRaw }}" onChange="{{ onAvSigla }}" placeholder="Sigla" maxLength="6" aria-label="Sigla" style="height:42px;background:#071a2e;border:1px solid rgba(141,179,207,.25);padding:0 12px;font:600 15px 'JetBrains Mono',monospace;text-transform:uppercase;border-radius:2px">
+              </div>
+              <select ref="{{ teamSelRef }}" value="{{ avatarTeam }}" onChange="{{ onAvTeam }}" aria-label="Equipe" style="height:42px;width:100%;min-width:0;background:#071a2e;border:1px solid rgba(141,179,207,.25);padding:0 10px;font:600 14px Barlow,sans-serif;border-radius:2px">
+                <option value="">Independente</option>
+                <option value="CAASO">CAASO — USP São Carlos</option>
+                <option value="POLI">POLI — Poli USP</option>
+                <option value="MED PINHEIROS">MED PINHEIROS — Medicina USP</option>
+                <option value="MED RIBEIRÃO">MED RIBEIRÃO — Medicina Ribeirão</option>
+                <option value="FEA">FEA — FEA USP</option>
+                <option value="SANFRAN">SANFRAN — Direito USP</option>
+                <option value="ODONTO">ODONTO — Odonto USP</option>
+                <option value="ESALQ">ESALQ — ESALQ USP</option>
+                <option value="FARMÁCIA">FARMÁCIA — Farmácia USP</option>
+                <option value="UFSCAR">UFSCAR — UFSCar</option>
+                <option value="LEU">LEU — Unicamp</option>
+                <option value="LAP">LAP</option>
+                <option value="LAURP">LAURP</option>
+                <option value="UFABC">UFABC</option>
+                <option value="MACK">MACK — Mackenzie</option>
+                <option value="MAUÁ">MAUÁ — Mauá</option>
+                <option value="AXIS">AXIS</option>
+                <option value="USCS">USCS</option>
+                <option value="UNIFEI">UNIFEI</option>
+              </select>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">GÊNERO</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ genderChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:36px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+              <span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">CATEGORIA NA COMPETIÇÃO</span>
+              <div style="display:flex;gap:6px">
+                <sc-for list="{{ avSexChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="flex:1;height:40px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 13px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+            </div>
+            <div style="display:{{ vc.corpo }};flex-direction:column;gap:14px">
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">SILHUETA</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ frameChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:36px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">TIPO DE CORPO</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ bodyChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:36px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+
+              <div style="display:flex;flex-wrap:wrap;gap:10px">
+                <sc-for list="{{ skinSw }}" as="s" hint-placeholder-count="6"><button onClick="{{ s.on }}" aria-label="tom de pele" style="width:40px;height:40px;border-radius:50%;background:{{ s.c }};border:3px solid {{ s.bd }};cursor:pointer;padding:0"></button></sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 54px;gap:12px;align-items:center">
+                <span style="font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">ALTURA</span>
+                <input type="range" min="0.92" max="1.08" step="0.01" value="{{ avHeight }}" onChange="{{ onAvHeight }}" aria-label="Altura">
+                <span style="font:500 12px/1 'JetBrains Mono',monospace;color:#cfe3f2;text-align:right">{{ avHeightLabel }}</span>
+                <span style="font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">PORTE</span>
+                <input type="range" min="0.88" max="1.15" step="0.01" value="{{ avBuild }}" onChange="{{ onAvBuild }}" aria-label="Porte">
+                <span style="font:500 12px/1 'JetBrains Mono',monospace;color:#cfe3f2;text-align:right">{{ avBuildLabel }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">CABELO</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ hairChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:30px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ hairSw }}" as="s" hint-placeholder-count="8"><button onClick="{{ s.on }}" aria-label="cor do cabelo" style="width:24px;height:24px;border-radius:50%;background:{{ s.c }};border:2px solid {{ s.bd }};cursor:pointer;padding:0"></button></sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">ROSTO</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ facialChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:30px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">EXPRESSÃO</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ faceChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:30px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">NARIZ</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ noseChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:30px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+              <div style="display:flex;flex-direction:column;gap:6px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#8db3cf">DETALHES</span><div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ markChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:30px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div></div>
+
+            </div>
+            <div style="display:{{ vc.traje }};flex-direction:column;gap:12px">
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ suitChips }}" as="c" hint-placeholder-count="5"><button onClick="{{ c.on }}" style="height:34px;padding:0 12px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ patternChips }}" as="c" hint-placeholder-count="6"><button onClick="{{ c.on }}" style="height:28px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:500 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ suitSw1 }}" as="s" hint-placeholder-count="12"><button onClick="{{ s.on }}" aria-label="cor principal" style="width:28px;height:28px;background:{{ s.c }};border:2px solid {{ s.bd }};cursor:pointer;padding:0;border-radius:2px"></button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ suitSw2 }}" as="s" hint-placeholder-count="12"><button onClick="{{ s.on }}" aria-label="cor secundária" style="width:22px;height:22px;background:{{ s.c }};border:2px solid {{ s.bd }};cursor:pointer;padding:0;border-radius:50%"></button></sc-for>
+              </div>
+            </div>
+            <div style="display:{{ vc.touca }};flex-direction:column;gap:12px">
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ capChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:32px;padding:0 11px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ capSw1 }}" as="s" hint-placeholder-count="12"><button onClick="{{ s.on }}" aria-label="cor da touca" style="width:28px;height:28px;border-radius:50%;background:{{ s.c }};border:2px solid {{ s.bd }};cursor:pointer;padding:0"></button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ capSw2 }}" as="s" hint-placeholder-count="12"><button onClick="{{ s.on }}" aria-label="cor do detalhe" style="width:22px;height:22px;border-radius:50%;background:{{ s.c }};border:2px solid {{ s.bd }};cursor:pointer;padding:0"></button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ goggleChips }}" as="c" hint-placeholder-count="6"><button onClick="{{ c.on }}" style="height:30px;padding:0 10px 0 6px;display:flex;align-items:center;gap:6px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap"><span style="width:16px;height:10px;border-radius:5px;background:{{ c.dot }}"></span>{{ c.label }}</button></sc-for>
+              </div>
+            </div>
+            <div style="display:{{ vc.extras }};flex-direction:column;gap:12px">
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ hatChips }}" as="c" hint-placeholder-count="5"><button onClick="{{ c.on }}" style="height:32px;padding:0 11px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ hatSw }}" as="s" hint-placeholder-count="12"><button onClick="{{ s.on }}" aria-label="cor do boné" style="width:24px;height:24px;background:{{ s.c }};border:2px solid {{ s.bd }};cursor:pointer;padding:0;border-radius:2px"></button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ accChips }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.on }}" style="height:30px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ medalChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:28px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ celeChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:28px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="flex:none;display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px;border-top:1px solid rgba(141,179,207,.16)">
+            <button onClick="{{ saveAvatarGo }}" style="flex:1;min-width:180px;height:46px;background:#FFD23F;color:#041226;border:0;cursor:pointer;font:900 18px/1 'Big Shoulders Display',sans-serif;letter-spacing:.1em;text-transform:uppercase;border-radius:2px">Ir para a piscina →</button>
+            <button onClick="{{ randomAvatar }}" style="height:46px;padding:0 14px;background:rgba(141,179,207,.06);color:#eaf6ff;border:1px solid rgba(141,179,207,.25);cursor:pointer;font:700 14px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-radius:2px">Aleatório</button>
+            <button onClick="{{ resetAvatar }}" style="height:46px;padding:0 14px;background:none;color:#8db3cf;border:1px solid rgba(141,179,207,.18);cursor:pointer;font:700 14px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-radius:2px">Restaurar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-screen-label="Raio-X" style="position:absolute;inset:0;display:{{ raioDisplay }};flex-direction:column;overflow:hidden">
+      <div style="flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;border-bottom:1px solid rgba(141,179,207,.14)">
+        <span style="font:900 26px/1 'Big Shoulders Display',sans-serif;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap">Raio-X</span>
+        <div style="display:flex;gap:4px">
+          <sc-for list="{{ rModeChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:30px;padding:0 11px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:700 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;flex:none;gap:4px">
+          <sc-for list="{{ rCompChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:28px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:{{ rFinalCtl }};flex:none;gap:4px">
+          <sc-for list="{{ rYearChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:28px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:500 11.5px/1 'JetBrains Mono',monospace;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;gap:4px">
+          <sc-for list="{{ rSexChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:28px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;gap:4px" title="Comprimento da piscina (não consta nas súmulas)">
+          <sc-for list="{{ rPoolChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:28px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:500 11.5px/1 'JetBrains Mono',monospace;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:{{ rFinalCtl }};align-items:center;gap:6px;margin-left:auto">
+          <input value="{{ rTime }}" onChange="{{ onRTime }}" inputMode="decimal" placeholder="seu tempo" aria-label="Seu tempo" style="width:104px;height:30px;background:#031021;border:1px solid rgba(255,210,63,.55);color:#FFD23F;font:600 14px/1 'JetBrains Mono',monospace;text-align:center;border-radius:2px">
+          <button onClick="{{ toggleTec }}" title="Defina sua reação, breakout, submerso, passagem e braçadas" style="display:{{ tecBtnDisp }};height:30px;padding:0 10px;border:1px solid {{ tecChip.bd }};background:{{ tecChip.bg }};color:{{ tecChip.fg }};font:700 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">Meu perfil técnico</button>
+          <button onClick="{{ playRaio }}" style="height:30px;padding:0 12px;border:0;background:#FFD23F;color:#041226;font:800 12.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ rPlayLabel }}</button>
+        </div>
+        <div style="flex-basis:100%;display:{{ rFinalCtl }};flex-wrap:wrap;gap:4px;align-items:center">
+          <sc-for list="{{ rEventChips }}" as="c" hint-placeholder-count="10"><button onClick="{{ c.on }}" title="{{ c.title }}" style="height:28px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};opacity:{{ c.op }};font:700 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="flex-basis:100%;display:{{ rAllCtl }};flex-wrap:wrap;gap:4px;align-items:center">
+          <sc-for list="{{ rViewChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:28px;padding:0 11px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:700 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          <span style="width:8px"></span>
+          <sc-for list="{{ rMetricChips }}" as="c" hint-placeholder-count="9"><button onClick="{{ c.on }}" style="height:28px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+      </div>
+      <div style="flex:none;display:{{ rFinalFlex }};gap:1px;background:rgba(141,179,207,.14);border-bottom:1px solid rgba(141,179,207,.14);overflow:hidden">
+        <div style="flex:none;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:8px 14px;background:#041226;min-width:120px;max-width:200px">
+          <span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#8db3cf">TELEMETRIA</span>
+          <span style="font:700 15px/1.1 Barlow,sans-serif;color:{{ rSelColor }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ rSelName }}</span>
+        </div>
+        <sc-for list="{{ rKpis }}" as="k" hint-placeholder-count="8">
+          <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:#071a2e">
+            <span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:{{ k.c }}">{{ k.l }}</span>
+            <span style="font:800 22px/1 'Big Shoulders Display',sans-serif;color:#eaf6ff;white-space:nowrap">{{ k.v }}</span>
+            <span style="font:500 10px/1 'JetBrains Mono',monospace;color:#56708a">PRO {{ k.pro }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:none;display:{{ rLayDisp }};flex-wrap:wrap;gap:4px;align-items:center;padding:8px 16px 0">
+        <span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#56708a;padding-right:4px">IDA × VOLTA</span>
+        <sc-for list="{{ rLayers }}" as="c" hint-placeholder-count="0"><button onClick="{{ c.on }}" style="height:24px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+      </div>
+      <div style="flex:1;min-height:0;display:{{ rFinalGrid }};grid-template-columns:{{ rCols }};gap:10px;padding:10px {{ rPadR }} 14px 16px">
+        <div style="min-height:0;display:flex;flex-direction:column;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+          <div style="flex:none;display:flex;flex-wrap:wrap;gap:4px;padding:6px;border-bottom:1px solid rgba(141,179,207,.1)">
+            <sc-for list="{{ rPickA }}" as="c" hint-placeholder-count="7"><button onClick="{{ c.on }}" title="{{ c.title }}" style="flex:none;height:26px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          </div>
+          <div ref="{{ rARef }}" style="flex:1;min-height:0;position:relative;overflow:hidden;margin:6px 8px 6px 4px"></div>
+        </div>
+        <div style="min-height:0;display:{{ rBDisp }};flex-direction:column;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+          <div style="flex:none;display:flex;flex-wrap:wrap;gap:4px;padding:6px;border-bottom:1px solid rgba(141,179,207,.1)">
+            <sc-for list="{{ rPickB }}" as="c" hint-placeholder-count="7"><button onClick="{{ c.on }}" title="{{ c.title }}" style="flex:none;height:26px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          </div>
+          <div ref="{{ rBRef }}" style="flex:1;min-height:0;position:relative;overflow:hidden;margin:6px 8px 6px 4px"></div>
+        </div>
+      </div>
+            <div style="flex:1;min-height:0;display:{{ rAllDisp }};padding:10px 16px 14px">
+        <div ref="{{ rAllRef }}" style="height:100%;position:relative;overflow:hidden"></div>
+      </div>
+    </section>
+
+    <section data-screen-label="Calculadora" style="position:absolute;inset:0;display:{{ calcDisplay }};overflow-y:{{ calcOverflow }};overflow-x:hidden">
+      <div style="height:{{ calcH }};display:grid;grid-template-columns:{{ calcCols }};min-height:0">
+        <aside style="min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding:14px;border-right:1px solid rgba(141,179,207,.12);background:#041226">
+          <span style="font:900 30px/.92 'Big Shoulders Display',sans-serif;text-transform:uppercase">Sua chance</span>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <sc-for list="{{ cCompChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:30px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+            <span style="flex:1"></span>
+            <sc-for list="{{ cSexChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:30px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px">
+            <sc-for list="{{ cEventChips }}" as="c" hint-placeholder-count="10"><button onClick="{{ c.on }}" title="{{ c.title }}" style="height:28px;padding:0 2px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};opacity:{{ c.op }};font:700 11.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap;overflow:hidden">{{ c.label }}</button></sc-for>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <sc-for list="{{ cYearChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:26px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:500 11.5px/1 'JetBrains Mono',monospace;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            <sc-for list="{{ cModeChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" title="{{ c.title }}" style="height:30px;padding:0 10px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          </div>
+          <input value="{{ cTime }}" onChange="{{ onCTime }}" inputMode="decimal" placeholder="26.50" aria-label="Seu tempo" style="flex:none;height:44px;background:#031021;border:1px solid rgba(255,210,63,.55);color:#FFD23F;font:600 22px/1 'JetBrains Mono',monospace;text-align:center;border-radius:2px">
+          <div style="display:flex;flex-direction:column;gap:6px" title="{{ cSigmaHint }}">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#8db3cf">Sua consistência ⓘ</span>
+              <span style="font:600 13px/1 'JetBrains Mono',monospace;color:#eaf6ff">{{ cSigmaLabel }}</span>
+            </div>
+            <input type="range" min="0.3" max="3" step="0.1" value="{{ cSigma }}" onChange="{{ onCSigma }}" aria-label="Consistência">
+          </div>
+          <button onClick="{{ testInPool }}" style="flex:none;height:46px;background:#FFD23F;color:#041226;border:0;cursor:pointer;font:900 17px/1 'Big Shoulders Display',sans-serif;letter-spacing:.1em;text-transform:uppercase;border-radius:2px">Testar na piscina →</button>
+        </aside>
+        <div style="min-height:0;display:grid;grid-template-rows:{{ calcRows }};gap:10px;padding:12px 14px">
+          <div style="display:flex;flex-wrap:wrap;gap:1px;background:rgba(141,179,207,.14);border:1px solid rgba(141,179,207,.14)">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="5">
+              <div style="flex:1 1 84px;display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:#071a2e">
+                <span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:{{ k.c }}">{{ k.l }}</span>
+                <span style="font:800 28px/1 'Big Shoulders Display',sans-serif;color:#eaf6ff">{{ k.v }}</span>
+              </div>
+            </sc-for>
+            <div style="flex:1.6 1 160px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;align-content:center;padding:8px 12px;background:#041226">
+              <sc-for list="{{ targets }}" as="t" hint-placeholder-count="4">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px"><span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:{{ t.c }};white-space:nowrap">{{ t.l }}</span><span style="font:700 14px/1 'JetBrains Mono',monospace;color:#eaf6ff">{{ t.v }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ calcEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:30px;border:1px dashed rgba(141,179,207,.25);color:#8db3cf;font:500 14px/1.5 Barlow,sans-serif">{{ calcEmptyMsg }}</div>
+          </sc-if>
+          <div style="min-height:0;display:grid;grid-template-columns:{{ calcInner }};gap:10px">
+            <div style="min-height:0;display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font:800 16px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap">Chance × tempo</span><span style="font:500 10px/1 'JetBrains Mono',monospace;color:#56708a">arraste ↔</span></div>
+              <div ref="{{ calcCurveRef }}" style="flex:1;min-height:0;position:relative;overflow:hidden"></div>
+            </div>
+            <div style="min-height:0;display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+              <span style="font:800 16px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em;text-transform:uppercase">Colocação</span>
+              <div ref="{{ calcPosRef }}" style="flex:1;min-height:0;position:relative;overflow:hidden"></div>
+            </div>
+          </div>
+          <div style="min-height:0;display:grid;grid-template-columns:{{ calcInner }};gap:10px">
+            <div style="min-height:0;display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+              <span style="font:800 16px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em;text-transform:uppercase">Você em cada final</span>
+              <div ref="{{ calcFieldsRef }}" style="flex:1;min-height:0;position:relative;overflow:hidden"></div>
+            </div>
+            <div style="min-height:0;display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:#071a2e;border:1px solid rgba(141,179,207,.14);overflow-y:auto;overflow-x:hidden">
+              <div style="display:grid;grid-template-columns:38px minmax(0,1fr) 50px 26px;gap:6px;font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.08em;color:#56708a;text-transform:uppercase;padding:2px 4px 4px">
+                <span>Ano</span><span>Você</span><span style="text-align:right">p/ 1º</span><span style="text-align:right">Pts</span>
+              </div>
+              <sc-for list="{{ yearRows }}" as="r" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:38px minmax(0,1fr) 50px 26px;gap:6px;align-items:center;min-height:28px;padding:0 4px;background:#041226;font:500 12px/1 'JetBrains Mono',monospace">
+                  <span style="color:#eaf6ff">{{ r.year }}</span>
+                  <span style="color:{{ r.pc }};font-weight:700;white-space:nowrap">{{ r.pos }}</span>
+                  <span style="text-align:right;color:#8db3cf">{{ r.gap }}</span>
+                  <span style="text-align:right;color:#eaf6ff">{{ r.pts }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-screen-label="Observatório" style="position:absolute;inset:0;display:{{ obsDisplay }};flex-direction:column;overflow:hidden">
+      <div style="flex:none;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(141,179,207,.14)">
+        <div style="display:flex;flex:none;gap:4px;align-items:center">
+          <sc-for list="{{ oCompChips }}" as="c" hint-placeholder-count="2"><button onClick="{{ c.on }}" style="height:26px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;flex:none;gap:4px;align-items:center">
+          <sc-for list="{{ oYearChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:26px;padding:0 7px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:500 11.5px/1 'JetBrains Mono',monospace;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;flex:none;gap:4px;align-items:center">
+          <sc-for list="{{ oSexChips }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.on }}" style="height:26px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="display:flex;flex:none;gap:4px;align-items:center">
+          <span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.12em;color:#56708a">COR</span>
+          <sc-for list="{{ oColorChips }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.on }}" style="height:26px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 12px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <span style="font:500 11px/1.3 'JetBrains Mono',monospace;color:#56708a;white-space:nowrap">{{ obsCountsLabel }}</span>
+        <div style="display:{{ selBarDisplay }};align-items:center;gap:8px;margin-left:auto;padding:4px 6px 4px 10px;background:rgba(47,224,240,.1);border:1px solid rgba(47,224,240,.4)">
+          <span style="font:600 12px/1.2 Barlow,sans-serif;color:#eaf6ff">{{ selLabel }}</span>
+          <button onClick="{{ clearSel }}" style="height:24px;padding:0 8px;border:1px solid #2FE0F0;background:none;color:#2FE0F0;font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px">Limpar</button>
+        </div>
+        <div data-noscroll="" style="flex-basis:100%;min-width:0;display:flex;gap:4px;align-items:center;overflow-x:auto;scrollbar-width:none">
+          <sc-for list="{{ oEventChips }}" as="c" hint-placeholder-count="10"><button onClick="{{ c.on }}" style="flex:none;height:24px;padding:0 7px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          <span style="width:8px"></span>
+          <sc-for list="{{ oTeamChips }}" as="c" hint-placeholder-count="8"><button onClick="{{ c.on }}" style="flex:none;height:24px;padding:0 7px 0 5px;display:flex;align-items:center;gap:5px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 10.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap"><span style="width:8px;height:8px;background:{{ c.dot }}"></span>{{ c.label }}</button></sc-for>
+        </div>
+      </div>
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:{{ obsCols }};grid-template-rows:auto minmax(0,1fr);gap:6px 12px;padding:8px 16px 14px">
+        <div style="grid-column:1;grid-row:1;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
+          <sc-for list="{{ oPickA }}" as="c" hint-placeholder-count="8"><button onClick="{{ c.on }}" title="{{ c.title }}" style="flex:none;height:28px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          <span style="width:6px;flex:none"></span>
+          <sc-for list="{{ oToolsA }}" as="c" hint-placeholder-count="0"><button onClick="{{ c.on }}" style="flex:none;height:24px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="grid-column:2;grid-row:1;display:{{ obsBDisp }};flex-wrap:wrap;gap:4px;align-items:center">
+          <sc-for list="{{ oPickB }}" as="c" hint-placeholder-count="8"><button onClick="{{ c.on }}" title="{{ c.title }}" style="flex:none;height:28px;padding:0 9px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+          <span style="width:6px;flex:none"></span>
+          <sc-for list="{{ oToolsB }}" as="c" hint-placeholder-count="0"><button onClick="{{ c.on }}" style="flex:none;height:24px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ c.label }}</button></sc-for>
+        </div>
+        <div ref="{{ swarmRef }}" style="grid-column:{{ ov.swarm.col }};grid-row:2;display:{{ ov.swarm.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px"></div>
+        <div ref="{{ ridgeRef }}" style="grid-column:{{ ov.ridge.col }};grid-row:2;display:{{ ov.ridge.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px"></div>
+        <div ref="{{ bumpRef }}" style="grid-column:{{ ov.bump.col }};grid-row:2;display:{{ ov.bump.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px"></div>
+        <div ref="{{ matrixRef }}" style="grid-column:{{ ov.matrix.col }};grid-row:2;display:{{ ov.matrix.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px"></div>
+        <div ref="{{ pcaRef }}" style="grid-column:{{ ov.pca.col }};grid-row:2;display:{{ ov.pca.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px;cursor:grab"></div>
+        <div ref="{{ pcRef }}" style="grid-column:{{ ov.pc.col }};grid-row:2;display:{{ ov.pc.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px"></div>
+        <div ref="{{ chordRef }}" style="grid-column:{{ ov.chord.col }};grid-row:2;display:{{ ov.chord.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px"></div>
+        <div ref="{{ lorenzRef }}" style="grid-column:{{ ov.lorenz.col }};grid-row:2;display:{{ ov.lorenz.disp }};min-height:0;position:relative;overflow:hidden;background:#071a2e;border:1px solid rgba(141,179,207,.14);padding:6px"></div>
+      </div>
+    </section>
+
+    <section data-screen-label="Método" style="position:absolute;inset:0;display:{{ metDisplay }};overflow-y:auto;overflow-x:hidden">
+      <div style="min-height:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;padding:12px 16px 16px">
+        <div style="display:flex;flex-direction:column;gap:10px;padding:14px;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+          <span style="font:800 20px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em;text-transform:uppercase">Dados</span>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:rgba(141,179,207,.14)">
+            <sc-for list="{{ metStats }}" as="s" hint-placeholder-count="6">
+              <div style="padding:10px;background:#041226;display:flex;flex-direction:column;gap:4px"><span style="font:800 26px/1 'Big Shoulders Display',sans-serif">{{ s.v }}</span><span style="font:500 9px/1.2 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#8db3cf">{{ s.l }}</span></div>
+            </sc-for>
+          </div>
+          <sc-for list="{{ metSteps }}" as="s" hint-placeholder-count="6">
+            <div title="{{ s.d }}" style="display:grid;grid-template-columns:26px minmax(0,1fr);gap:8px;align-items:baseline;padding:7px 0;border-top:1px solid rgba(141,179,207,.12);cursor:help">
+              <span style="font:700 12px/1.4 'JetBrains Mono',monospace;color:#FFD23F">{{ s.n }}</span>
+              <span style="font:600 13.5px/1.35 Barlow,sans-serif;color:#eaf6ff">{{ s.t }} <span style="font-weight:500;color:#8db3cf">· {{ s.s }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:14px;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+          <span style="font:800 20px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em;text-transform:uppercase">Questões</span>
+          <sc-for list="{{ metQs }}" as="q" hint-placeholder-count="5">
+            <div style="display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid rgba(141,179,207,.12)">
+              <span style="font:700 12px/1 'JetBrains Mono',monospace;color:#2FE0F0">{{ q.n }}</span>
+              <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+                <span style="font:700 13.5px/1.3 Barlow,sans-serif;color:#eaf6ff">{{ q.t }}</span>
+                <span style="font:600 12.5px/1.35 'JetBrains Mono',monospace;color:#FFD23F">{{ q.a }}</span>
+              </div>
+              <button onClick="{{ q.go }}" style="height:28px;padding:0 10px;border:1px solid rgba(47,224,240,.5);background:none;color:#2FE0F0;font:600 11.5px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap">{{ q.v }} →</button>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;padding:14px;background:#071a2e;border:1px solid rgba(141,179,207,.14)">
+          <span style="font:800 20px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em;text-transform:uppercase">Referência PRO</span>
+          <span style="font:500 11px/1.4 'JetBrains Mono',monospace;color:#8db3cf">médias aproximadas de finalistas de elite · linha 1 masc, linha 2 fem · s, m, ciclos/min</span>
+          <div style="display:grid;grid-template-columns:auto repeat(4,minmax(0,1fr));gap:1px;background:rgba(141,179,207,.14);font:500 10.5px/1.25 'JetBrains Mono',monospace">
+            <sc-for list="{{ proHead }}" as="h" hint-placeholder-count="5"><span style="padding:7px 6px;background:#041226;color:#56708a;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase">{{ h }}</span></sc-for>
+            <sc-for list="{{ proCells }}" as="c" hint-placeholder-count="20"><span style="padding:7px 5px;background:#071a2e;color:{{ c.c }};font-weight:{{ c.w }};white-space:pre-line">{{ c.v }}</span></sc-for>
+          </div>
+          <sc-for list="{{ metBlocks }}" as="b" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:5px;padding-top:8px;border-top:1px solid rgba(141,179,207,.12)">
+              <span style="font:800 14px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:{{ b.c }}">{{ b.t }}</span>
+              <sc-for list="{{ b.items }}" as="i" hint-placeholder-count="3"><span style="font:500 12px/1.4 Barlow,sans-serif;color:#cfe3f2;text-wrap:pretty">{{ i }}</span></sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <div ref="{{ tecRef }}" style="position:absolute;left:{{ tecL }};right:{{ tecR }};top:{{ tecT }};bottom:{{ tecB }};width:min(340px,calc(100% - 32px));z-index:7;display:{{ tecDisplay }};flex-direction:column;background:#041226;border:1px solid rgba(255,210,63,.45);box-shadow:-16px 0 50px rgba(0,0,0,.5)">
+        <div style="flex:none;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:14px 14px 8px">
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span style="font:800 20px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em;text-transform:uppercase;color:#FFD23F">Meu perfil técnico</span><span style="font:500 11px/1.3 'JetBrains Mono',monospace;color:#8db3cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ tecSub }}</span></div>
+          <button onClick="{{ toggleTec }}" aria-label="Fechar" style="flex:none;width:28px;height:28px;background:none;border:1px solid rgba(141,179,207,.25);color:#8db3cf;cursor:pointer;border-radius:2px">✕</button>
+        </div>
+        <div style="flex:none;display:flex;flex-wrap:wrap;gap:4px;padding:0 14px 8px;border-bottom:1px solid rgba(141,179,207,.12)">
+          <sc-for list="{{ tecWho }}" as="c" hint-placeholder-count="1"><button onClick="{{ c.on }}" style="height:24px;max-width:150px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.label }}</button></sc-for>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:10px 14px 12px">
+          <sc-for list="{{ tecRows }}" as="r" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="flex:1;font:600 12.5px/1.2 Barlow,sans-serif;color:#eaf6ff">{{ r.label }}</span>
+                <span style="font:700 14px/1 'JetBrains Mono',monospace;color:{{ r.vc }};white-space:nowrap">{{ r.vt }}</span>
+                <button onClick="{{ r.reset }}" title="Voltar ao valor estimado" style="display:{{ r.resetDisp }};height:20px;padding:0 6px;border:1px solid rgba(141,179,207,.3);background:none;color:#8db3cf;font:600 10px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px">auto</button>
+              </div>
+              <input type="range" min="{{ r.min }}" max="{{ r.max }}" step="{{ r.step }}" value="{{ r.v }}" onChange="{{ r.on }}" aria-label="{{ r.label }}" style="width:100%;margin:0">
+              <div style="display:flex;justify-content:space-between;font:500 9.5px/1 'JetBrains Mono',monospace;color:#56708a"><span>{{ r.lo }}</span><span>{{ r.hint }}</span><span>{{ r.hi }}</span></div>
+            </div>
+          </sc-for>
+          <div style="display:flex;gap:4px;align-items:center">
+            <span style="font:600 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#8db3cf">BRAÇADAS POR</span>
+            <sc-for list="{{ tecUnitChips }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.on }}" style="height:24px;padding:0 8px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};font:600 11px/1 Barlow,sans-serif;cursor:pointer;border-radius:2px">{{ c.label }}</button></sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:rgba(141,179,207,.14)">
+            <sc-for list="{{ tecReads }}" as="k" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:3px;padding:8px 10px;background:#071a2e"><span style="font:600 9px/1 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8db3cf">{{ k.l }}</span><span style="font:800 20px/1 'Big Shoulders Display',sans-serif;color:{{ k.c }}">{{ k.v }}</span><span style="font:500 9.5px/1.2 'JetBrains Mono',monospace;color:{{ k.c }}">{{ k.tag }}</span></div>
+            </sc-for>
+          </div>
+          <span style="display:{{ tecWarnDisp }};font:600 11.5px/1.4 Barlow,sans-serif;color:#FF5468">{{ tecWarn }}</span>
+        </div>
+        <div style="flex:none;display:flex;gap:8px;padding:10px 14px;border-top:1px solid rgba(141,179,207,.14)">
+          <button onClick="{{ tecReset }}" style="height:40px;padding:0 12px;background:none;color:#8db3cf;border:1px solid rgba(141,179,207,.25);cursor:pointer;font:700 13px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase;border-radius:2px">Restaurar</button>
+          <button onClick="{{ tecSwim }}" style="flex:1;height:40px;background:#FFD23F;color:#041226;border:0;cursor:pointer;font:900 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.08em;text-transform:uppercase;border-radius:2px">{{ tecGoLabel }}</button>
+        </div>
+      </div>
+
+    <aside style="position:absolute;top:0;right:0;bottom:0;width:min(440px,94vw);display:{{ drawerDisplay }};flex-direction:column;background:#041226;border-left:1px solid rgba(47,224,240,.35);box-shadow:-20px 0 60px rgba(0,0,0,.45);z-index:8;overflow:auto">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:18px 18px 12px;border-bottom:1px solid rgba(141,179,207,.14)">
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+          <span style="font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#2FE0F0">FICHA DO ATLETA</span>
+          <span style="font:900 30px/.95 'Big Shoulders Display',sans-serif;text-transform:uppercase;color:#eaf6ff">{{ dr.name }}</span>
+          <span style="font:600 13px/1.3 Barlow,sans-serif;color:{{ dr.color }}">{{ dr.team }}</span>
+          <span style="font:500 11.5px/1.3 'JetBrains Mono',monospace;color:#8db3cf">{{ dr.meta }}</span>
+        </div>
+        <button onClick="{{ closeDrawer }}" style="flex:none;width:32px;height:32px;background:none;border:1px solid rgba(141,179,207,.25);color:#8db3cf;cursor:pointer;border-radius:2px">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(141,179,207,.14);border-bottom:1px solid rgba(141,179,207,.14)">
+        <sc-for list="{{ dr.kpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:#071a2e;padding:12px 10px;display:flex;flex-direction:column;gap:4px"><span style="font:800 26px/1 'Big Shoulders Display',sans-serif;color:{{ k.c }}">{{ k.v }}</span><span style="font:500 9.5px/1 'JetBrains Mono',monospace;letter-spacing:.1em;color:#8db3cf;text-transform:uppercase">{{ k.l }}</span></div>
+        </sc-for>
+      </div>
+      <div style="padding:14px 18px 6px;display:flex;flex-direction:column;gap:6px">
+        <span style="font:800 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase">Trajetória</span>
+        <div ref="{{ tlRef }}" style="overflow:hidden;height:200px;position:relative"></div>
+      </div>
+      <div style="padding:6px 18px 6px;display:flex;flex-direction:column;gap:6px">
+        <span style="font:800 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase">Perfil por estilo (melhor IT)</span>
+        <div ref="{{ radarRef }}" style="overflow:hidden;height:210px;position:relative"></div>
+      </div>
+      <div style="padding:6px 18px 12px;display:flex;flex-direction:column;gap:2px">
+        <span style="font:800 15px/1 'Big Shoulders Display',sans-serif;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Melhores marcas</span>
+        <sc-for list="{{ dr.bests }}" as="b" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 66px 84px 28px;gap:8px;align-items:center;height:30px;padding:0 4px 0 6px;background:#071a2e;font:500 12.5px/1 Barlow,sans-serif">
+            <span style="color:{{ b.c }};font-weight:700">{{ b.ev }}</span>
+            <span style="font:600 12.5px/1 'JetBrains Mono',monospace;text-align:right">{{ b.t }}</span>
+            <span style="font:500 11px/1 'JetBrains Mono',monospace;text-align:right;color:#8db3cf">{{ b.w }}</span>
+            <button onClick="{{ b.watch }}" title="Assistir a esta final na piscina 3D" aria-label="Assistir" style="width:26px;height:24px;border:1px solid rgba(47,224,240,.5);background:none;color:#2FE0F0;cursor:pointer;border-radius:2px;font:700 11px/1 Barlow,sans-serif">▶</button>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:10px 18px 22px;margin-top:auto">
+        <button onClick="{{ challenge }}" style="width:100%;height:48px;background:#FFD23F;color:#041226;border:0;cursor:pointer;font:900 17px/1 'Big Shoulders Display',sans-serif;letter-spacing:.1em;text-transform:uppercase;border-radius:2px">{{ dr.cta }}</button>
+      </div>
+    </aside>
+
+    <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:#031021">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+          <span style="font:900 64px/1 'Big Shoulders Display',sans-serif;letter-spacing:.05em">RAIA</span>
+          <div style="display:{{ capyDisp }};position:relative;width:240px;height:46px;overflow:hidden">
+            <svg viewBox="0 0 64 40" width="64" height="40" style="position:absolute;bottom:0;left:0;animation:raiaCapy 3.4s linear infinite" aria-hidden="true">
+              <ellipse cx="30" cy="24" rx="20" ry="11" fill="#8a5a2b"></ellipse><rect x="40" y="12" width="16" height="14" rx="6" fill="#7a4d22"></rect><circle cx="51" cy="17" r="1.6" fill="#041226"></circle><rect x="44" y="9" width="4" height="4" rx="2" fill="#5a3620"></rect>
+              <rect x="16" y="31" width="4" height="7" rx="2" fill="#5a3620"></rect><rect x="38" y="31" width="4" height="7" rx="2" fill="#5a3620"></rect>
+            </svg>
+            <span style="position:absolute;right:0;bottom:4px;font:600 10px/1 'JetBrains Mono',monospace;color:#8db3cf;letter-spacing:.08em">{{ capyMsg }}</span>
+          </div>
+          <span style="font:500 12px/1 'JetBrains Mono',monospace;letter-spacing:.14em;color:#2FE0F0;animation:raiaPulse 1.4s infinite">{{ loadingMsg }}</span>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;mood&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;final&quot;,&quot;dia&quot;,&quot;neon&quot;],&quot;default&quot;:&quot;final&quot;,&quot;tsType&quot;:&quot;'final' | 'dia' | 'neon'&quot;,&quot;section&quot;:&quot;Ambiente&quot;},&quot;crowd&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;calma&quot;,&quot;normal&quot;,&quot;explosiva&quot;],&quot;default&quot;:&quot;normal&quot;,&quot;tsType&quot;:&quot;'calma' | 'normal' | 'explosiva'&quot;,&quot;section&quot;:&quot;Ambiente&quot;},&quot;director&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Transmissão&quot;}}">
+const SW_COLORS = ['#0B3D91', '#041226', '#F4F7FB', '#FFD23F', '#FF5468', '#2FE0F0', '#E69F00', '#009E73', '#CC79A7', '#D55E00', '#56B4E9', '#7A5CFF'];
+const TAB_ICONS = {"on":{"inicio":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23eaf6ff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%207h18M3%2012h18M3%2017h18%22%20stroke-dasharray%3D%223%202%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2212%22%20r%3D%222.2%22%20fill%3D%22%23eaf6ff%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E","vestiario":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23eaf6ff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%2013a7%207%200%200%201%2014%200v1H5z%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2215.5%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2215.5%22%20r%3D%222.2%22%2F%3E%3Cpath%20d%3D%22M11.2%2015.5h1.6%22%2F%3E%3C%2Fsvg%3E","arena":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23eaf6ff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2019%207%205h10l3%2014z%22%2F%3E%3Cpath%20d%3D%22M9.5%205%208.5%2019M14.5%205l1%2014M12%205v14%22%2F%3E%3C%2Fsvg%3E","raiox":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23eaf6ff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2213%22%20r%3D%227%22%2F%3E%3Cpath%20d%3D%22M12%2013V9M10%203h4M12%203v3%22%2F%3E%3Cpath%20d%3D%22M7%2013h2l1.5-2%202%204%201.5-2H17%22%2F%3E%3C%2Fsvg%3E","calc":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23eaf6ff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%2020v-5h4v5M10%2020V9h4v11M15%2020v-8h4v8%22%2F%3E%3Cpath%20d%3D%22M12%204l1%202%202%20.3-1.5%201.4.4%202.1-1.9-1-1.9%201%20.4-2.1L9%206.3l2-.3z%22%20fill%3D%22%23eaf6ff%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E","obs":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23eaf6ff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%227%22%20cy%3D%2216%22%20r%3D%221.6%22%20fill%3D%22%23eaf6ff%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%221.6%22%20fill%3D%22%23eaf6ff%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%228%22%20r%3D%221.6%22%20fill%3D%22%23eaf6ff%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2215%22%20r%3D%221.6%22%20fill%3D%22%23eaf6ff%22%2F%3E%3Cpath%20d%3D%22M4%2020h16M4%2020V4%22%20%2F%3E%3Cpath%20d%3D%22M9%206c4-3%2011%200%209%206s-9%206-11%203%22%20stroke-dasharray%3D%222%202%22%2F%3E%3C%2Fsvg%3E","metodo":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23eaf6ff%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%226%22%20cy%3D%226%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%226%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2218%22%20r%3D%222.2%22%2F%3E%3Cpath%20d%3D%22M8%206h8M7%208l4%208M17%208l-4%208%22%2F%3E%3C%2Fsvg%3E"},"off":{"inicio":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238db3cf%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%207h18M3%2012h18M3%2017h18%22%20stroke-dasharray%3D%223%202%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2212%22%20r%3D%222.2%22%20fill%3D%22%238db3cf%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E","vestiario":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238db3cf%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%2013a7%207%200%200%201%2014%200v1H5z%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2215.5%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%2215%22%20cy%3D%2215.5%22%20r%3D%222.2%22%2F%3E%3Cpath%20d%3D%22M11.2%2015.5h1.6%22%2F%3E%3C%2Fsvg%3E","arena":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238db3cf%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2019%207%205h10l3%2014z%22%2F%3E%3Cpath%20d%3D%22M9.5%205%208.5%2019M14.5%205l1%2014M12%205v14%22%2F%3E%3C%2Fsvg%3E","raiox":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238db3cf%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2213%22%20r%3D%227%22%2F%3E%3Cpath%20d%3D%22M12%2013V9M10%203h4M12%203v3%22%2F%3E%3Cpath%20d%3D%22M7%2013h2l1.5-2%202%204%201.5-2H17%22%2F%3E%3C%2Fsvg%3E","calc":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238db3cf%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%2020v-5h4v5M10%2020V9h4v11M15%2020v-8h4v8%22%2F%3E%3Cpath%20d%3D%22M12%204l1%202%202%20.3-1.5%201.4.4%202.1-1.9-1-1.9%201%20.4-2.1L9%206.3l2-.3z%22%20fill%3D%22%238db3cf%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E","obs":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238db3cf%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%227%22%20cy%3D%2216%22%20r%3D%221.6%22%20fill%3D%22%238db3cf%22%2F%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%221.6%22%20fill%3D%22%238db3cf%22%2F%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%228%22%20r%3D%221.6%22%20fill%3D%22%238db3cf%22%2F%3E%3Ccircle%20cx%3D%2217%22%20cy%3D%2215%22%20r%3D%221.6%22%20fill%3D%22%238db3cf%22%2F%3E%3Cpath%20d%3D%22M4%2020h16M4%2020V4%22%20%2F%3E%3Cpath%20d%3D%22M9%206c4-3%2011%200%209%206s-9%206-11%203%22%20stroke-dasharray%3D%222%202%22%2F%3E%3C%2Fsvg%3E","metodo":"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238db3cf%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%226%22%20cy%3D%226%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%226%22%20r%3D%222.2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2218%22%20r%3D%222.2%22%2F%3E%3Cpath%20d%3D%22M8%206h8M7%208l4%208M17%208l-4%208%22%2F%3E%3C%2Fsvg%3E"}};
+const R2 = Number(window.RAIA_RELEASE || 1) >= 2;
+const TABS = [['inicio', 'Início', '00'], ['vestiario', 'Vestiário', '01'], ['arena', 'Arena 3D', '02'], ['raiox', 'Raio-X', '03'], ['calc', 'Calculadora', '04'], ['obs', 'Observatório', '05'], ['metodo', 'Método', '06']].filter(([k]) => R2 || k !== 'calc');
+const EV_SHORT = { '50L': '50 L', '50C': '50 C', '50P': '50 P', '50B': '50 B', '100L': '100 L', '100M': '100 M', '200L': '200 L', '400L': '400 L', '4x50L': '4×50 L', '4x50M': '4×50 M' };
+const DOCK_TABS = [['res', 'Resultado'], ['fita', 'Fita'], ['passagens', 'Ida × volta'], ['parciais', 'Parciais'], ['breakouts', 'Breakouts'], ['velocidade', 'Velocidade'], ['srdps', 'SR × DPS'], ['bracadas', 'Braçadas'], ['perda', 'Perda vs PRO'], ['marey', 'Espaço-tempo'], ['heat', 'Vantagem'], ['rank', 'Ranking']];
+const RAIO_CHARTS = [['fita', 'Fita', 'Fases da prova no tempo'], ['passagens', 'Ida × volta', 'Parciais e braçadas por trecho de ida e de volta'], ['parciais', 'Parciais', 'Parciais estimadas por trecho'], ['breakouts', 'Breakouts', 'Submerso e breakout na piscina'], ['velocidade', 'Velocidade', 'Velocidade ao longo da prova'], ['srdps', 'SR × DPS', 'Frequência × distância por ciclo'], ['bracadas', 'Braçadas', 'Cada braçada ao longo da prova'], ['perda', 'Perda vs PRO', 'Onde se perde tempo para a elite']];
+const OBS_VIEWS = [['swarm', 'Enxame', 'Cada resultado pelo Índice Técnico · arraste para selecionar'], ['ridge', 'Nível', 'Densidade do Índice Técnico por edição'], ['bump', 'Ranking', 'Ranking das equipes por edição'], ['matrix', 'Equipe × prova', 'Fatia dos pontos de cada prova'], ['pca', 'Perfis', 'PCA + k-means dos perfis multiprovas · laço para selecionar'], ['pc', 'Coordenadas', 'Melhor IT por prova · arraste nos eixos'], ['chord', 'Combinações', 'Provas nadadas pelo mesmo atleta'], ['lorenz', 'Concentração', 'Curvas de Lorenz dos pontos por equipe']].filter(([k]) => R2 || ['swarm', 'ridge', 'bump', 'matrix'].includes(k)).map(([k, l, t]) => [k, l, R2 ? t : t.replace(' · arraste para selecionar', '')]);
+const VCATS = [['id', 'Identidade'], ['corpo', 'Corpo'], ['traje', 'Traje'], ['touca', 'Touca'], ['extras', 'Extras']];
+const OFF = { col: 1, disp: 'none' };
+const EMPTY = { dockTabs: [], vCats: [], vc: { id: 'none', corpo: 'none', traje: 'none', touca: 'none', extras: 'none' }, rModeChips: [], rViewChips: [], rCompChips: [], rYearChips: [], rSexChips: [], rPoolChips: [], rEventChips: [], rMetricChips: [], rKpis: [], rPickA: [], rPickB: [], oPickA: [], oPickB: [], oToolsA: [], oToolsB: [], ov: { swarm: OFF, ridge: OFF, bump: OFF, matrix: OFF, pca: OFF, pc: OFF, chord: OFF, lorenz: OFF }, proHead: [], proCells: [], dockDisplay: 'none', hudDisplay: 'block', hudOffDisplay: 'none', dockLeft: '14px', dockH: '0px', dockChartDisplay: 'none', dockResDisplay: 'none', liveDisplay: 'none', liveCardDisplay: 'none', sndChip: { bg: 'none', fg: '#cfe3f2', bd: 'rgba(141,179,207,.22)' }, sndLabel: '♪', toggleSound: () => { }, followOpts: [], followLabel: 'Seguir…', fBtnBg: '#071a2e', fBtnBd: 'rgba(255,210,63,.45)', fBtnFg: '#FFD23F', toggleFList: () => { }, fListDisp: 'none', dockLayers: [], dockLayDisp: 'none', rLayDisp: 'none', rPadR: '16px', tecTop: '0px', tecRows: [], tecReads: [], tecUnitChips: [], tecWho: [], tecL: 'auto', tecR: '16px', tecT: '150px', tecB: '14px', tecGoLabel: '', openTecArena: () => { }, tecAChip: { bg: 'none', fg: '#cfe3f2', bd: 'rgba(141,179,207,.22)' }, tecDisplay: 'none', tecBtnDisp: 'none', tecChip: { bg: 'none', fg: '#cfe3f2', bd: 'rgba(141,179,207,.22)' }, tecSub: '', tecWarn: '', tecWarnDisp: 'none', toggleTec: () => { }, tecReset: () => { }, tecSwim: () => { }, dock1Right: '8px', dock2Display: 'none', d2selDisp: 'none', dock2Opts: [], dock2Val: '', onDock2: () => { }, rLayers: [], liveChip: { bg: 'none', fg: '#cfe3f2', bd: 'rgba(141,179,207,.22)' }, toggleLive: () => { }, qDisplay: 'none', qHits: [], q: '', onQ: () => { }, dockMaxIcon: '▴', playLabel: '▶', speedLabel: '1×', camLabel: 'TV', rFinalCtl: 'none', rAllCtl: 'none', rFinalFlex: 'none', rFinalGrid: 'none', rAllDisp: 'none', rCols: '1fr', rBDisp: 'none', rSelName: '', rSelColor: '#eaf6ff', rPlayLabel: '', rTime: '', vestCols: '1fr 1fr', vestRows: '1fr', calcCols: '1fr', calcInner: '1fr', calcRows: 'auto', calcOverflow: 'hidden', calcH: '100%', obsCols: '1fr', obsBDisp: 'none' };
+
+const LS = 'raia.avatar.v1';
+
+class Component extends DCLogic {
+  state = {
+    tab: 'inicio', loading: true, loadingMsg: 'CARREGANDO DADOS E PISCINA…', cvd: 'none',
+    avatar: null, vPose: 'stand',
+    aComp: 'InterUSP', aSex: 'M', aCode: '50L', aMode: 'final', aYear: 2026, aWatch: false, aTime: '26.50', aNoise: true, aPool: 50, aRecord: true,
+    cam: 'tv', speed: 1, follow: null, fList: [], liveOn: true, soundOn: true, lay: { t: true, s: true, dir: true }, pUnit: 0, raceState: 'idle', setupOpen: true, results: null, dockOpen: false, dockMax: false, dockTab: 'fita', dockTab2: null, hud: true, playing: false, cubeOn: false, scrub: 0, tmax: 30, raceTitle: '',
+    cComp: 'InterUSP', cSex: 'M', cCode: '50L', cYears: [2023, 2024, 2025, 2026], cMode: 'media', cTime: '26.50', cSigma: 1.2, calc: null,
+    oComps: ['InterUSP', 'TUSCA'], oYears: [2023, 2024, 2025, 2026], oSex: 'M', oEvents: ['50L', '50C', '50P', '50B', '100L', '100M', '200L', '400L', '4x50L', '4x50M'], oA: 'swarm', oB: 'bump', oTeams: [], oColor: 'auto', selInfo: null, counts: null, pcaMode: 'zoom', pcaK: 4, pcaColor: 'auto', order: 'total',
+    drawer: null, q: '', vCat: 'traje', wide: typeof window === 'undefined' || window.innerWidth >= 900,
+    rMode: 'final', rComp: 'InterUSP', rYear: 2026, rCode: '50L', rSex: 'M', rPool: 50, rTime: '', rSel: 'you', rA: 'fita', rB: 'breakouts', rMetric: 'boStart', rAllComp: 'both', rAllView: 'panorama', rCorrSel: null, rPartial: true, rPlaying: false, tecCtx: 'raio', tecWho: 'you', oppTec: {}, tec: {}, tecOpen: false, tecUnit: '25',
+    conta: null
+  };
+  refs_ = {};
+  ref(n) { return this.refs_[n] || (this.refs_[n] = React.createRef()); }
+
+  async componentDidMount() {
+    const base = new URL('./', location.href).href;
+     window.__raia = this;
+    const contaP = window.raiaConta ? window.raiaConta.carregar() : Promise.resolve(null);
+    try {
+      const [core, sw, ar] = await Promise.all([import(base + 'js/core.js'), import(base + 'js/swimmer.js'), import(base + 'js/arena.js')]);
+      this.M = { core, sw, ar, base };
+      this.db = await core.loadData(base + 'data/natacao.json');
+      let av = null; try { av = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { }
+      try { const tec = JSON.parse(localStorage.getItem('raia.tec.v1') || 'null'); if (tec && typeof tec === 'object') { const t5 = tec['50L']; if (t5 && t5.rt === 1.2 && t5.boS === 3.62 && Math.abs((t5.strokes || 0) - 50.38) < 0.01) { delete tec['50L']; localStorage.setItem('raia.tec.v1', JSON.stringify(tec)); } this.state.tec = tec; } } catch (e) { }
+      const conta = await contaP.catch(() => null);
+      if (conta && conta.nome) { this.state.conta = conta.nome; if (conta.avatar) av = conta.avatar; if (conta.tec) this.state.tec = conta.tec; }
+      av = { ...sw.DEFAULT_AVATAR, ...(av || {}) }; if (!av.frame) av.frame = av.sex === 'F' ? 'F' : 'M'; if (!av.gender) av.gender = av.sex === 'F' ? 'mulher' : 'homem';
+      this.arena = new ar.Arena(this.ref('arena').current, {
+        onFinish: res => this.onRaceFinish(res),
+        onTime: (t, T) => this.onArenaTime(t, T),
+        onCamera: c => this.setState({ cam: c }),
+        onPick: lane => this.setFollow(this.state.follow === lane ? null : lane)
+      });
+      this.arena.setYou(av);
+      import(base + 'js/sound.js').then(m => { this.snd = new m.Sound(); this.snd.setOn(this.state.soundOn); this.arena.snd = this.snd; this._unlock = () => this.snd.unlock(); window.addEventListener('pointerdown', this._unlock); window.addEventListener('keydown', this._unlock); }).catch(e => console.error('RAIA som: ' + e.message));
+      const sex = av.sex || 'M';
+      this.setState({ avatar: av, loading: false, aSex: sex, cSex: sex, oSex: sex, rSex: sex });
+      this.after(() => this.suggestTimes());
+      import(base + 'js/calc.js').then(m => { this.M.calc = m; });
+      import(base + 'js/racecharts.js').then(m => { this.M.rc = m; });
+      import(base + 'js/bio.js').then(m => { this.M.bio = m; return import(base + 'js/biocharts.js'); }).then(m => { this.M.bc = m; this.forceUpdate(); this.after(() => this.redrawVisible()); }).catch(e => console.error('RAIA bio: ' + e.message));
+      import(base + 'js/obs.js').then(m => { this.M.obs = m; if (this.state.tab === 'obs') this.activate('obs'); });
+      this._onResize = () => { clearTimeout(this._rz); this._rz = setTimeout(() => { const w = window.innerWidth >= 900; if (w !== this.state.wide) this.setState({ wide: w }); this.after(() => { this.syncBoard(); this.measureBar(); this.redrawVisible(); }); }, 220); };
+      window.addEventListener('resize', this._onResize);
+      this._onKey = e => { const tg = (e.target && e.target.tagName) || ''; if (/INPUT|SELECT|TEXTAREA/.test(tg)) return; if ((e.key === 'h' || e.key === 'H') && this.state.tab === 'arena') this.toggleHud(); if ((e.key === 'm' || e.key === 'M') && this.state.tab === 'arena') this.toggleSound(); };
+      window.addEventListener('keydown', this._onKey);
+    } catch (e) {
+      console.error(e); this.setState({ loadingMsg: 'ERRO AO CARREGAR: ' + (e && e.message ? e.message : e) });
+    }
+  }
+  watchBar() { }
+  measureBar() { const el = this.ref('bar').current; if (!el || !el.offsetHeight) return; const b = Math.round(el.offsetHeight + 28); if (Math.abs(b - (this.state.barB || 0)) > 1) { this.setState({ barB: b }); setTimeout(() => this.drawDock(), 60); } }
+  componentWillUnmount() { this._barRO && this._barRO.disconnect(); window.removeEventListener('resize', this._onResize); window.removeEventListener('keydown', this._onKey); if (this._unlock) { window.removeEventListener('pointerdown', this._unlock); window.removeEventListener('keydown', this._unlock); } this.stopRaio && this.stopRaio(); this.arena && this.arena.dispose(); this.viewer && this.viewer.dispose(); }
+  after(fn) { setTimeout(() => { try { fn(); } catch (e) { console.error('RAIA: ' + (e && e.message) + ' ' + (e && e.stack)); } }, 45); }
+  goWith(tab, patch = {}, cb) { if (this.state.tab === 'vestiario') this.persistAvatar(); this.setState({ ...patch, tab }); this.after(() => { this.activate(tab); cb && cb(); }); }
+  openDrawer(id) { this.setState({ drawer: id }); this.after(() => this.M.obs && this.M.obs.drawAthlete({ timeline: this.ref('tl').current, radar: this.ref('radar').current }, this.db, id)); }
+  activate(tab) {
+    const A = this.arena; if (!A) return;
+    const stage = tab === 'inicio' || tab === 'arena';
+    A.setActive(stage);
+    if (tab === 'inicio' && A.mode !== 'showcase') A.setShowcase();
+    if (tab === 'arena' && A.mode !== 'race') this.prepareRace();
+    if (tab === 'vestiario') {
+      if (!this.viewer) { this.viewer = new this.M.sw.AvatarViewer(this.ref('vest').current); this.viewer.setPose(this.state.vPose); }
+      this.viewer.setConfig(this.state.avatar);
+      this.viewer.setActive(true);
+      const sel = this.ref('teamSel').current; if (sel) sel.value = (this.state.avatar && this.state.avatar.team) || '';
+    } else if (this.viewer) this.viewer.setActive(false);
+    if (tab === 'calc') { if (!this.calcModel) this.runCalc(); else this.drawCalc(); }
+    if (tab === 'obs' && this.M.obs) this.initObs();
+    if (tab === 'arena') { this.syncBoard(); this.drawDock(); setTimeout(() => this.measureBar(), 120); }
+    if (this.snd) this.snd.setScene(tab === 'arena' && (this.state.raceState === 'racing') ? 'race' : 'menu');
+    if (tab === 'raiox') this.drawRaio();
+  }
+  redrawVisible() {
+    const t = this.state.tab;
+    if (t === 'calc') this.drawCalc();
+    if (t === 'obs' && this.obsApi) this.obsApi.redraw();
+    if (t === 'arena') this.drawDock();
+    if (t === 'raiox') this.drawRaio();
+  }
+  go(tab) { if (tab === this.state.tab) return; this.goWith(tab, { drawer: tab === 'obs' ? this.state.drawer : null }); }
+
+  chip(on, kind) { if (!on) return { bg: 'rgba(141,179,207,.06)', fg: '#cfe3f2', bd: 'rgba(141,179,207,.22)' }; return kind === 'a' ? { bg: 'rgba(47,224,240,.16)', fg: '#eaf6ff', bd: '#2FE0F0' } : { bg: '#FFD23F', fg: '#041226', bd: '#FFD23F' }; }
+  evAvail(comp, sex, demo = true) { const E = this.M.core.EVENT_ORDER; return E.filter(c => this.db.events.some(e => e.comp === comp && e.sex === sex && e.code === c && (demo || !e.demo))); }
+  yearsAvail(comp, code, sex, demo = true) { return [...new Set(this.db.events.filter(e => e.comp === comp && e.code === code && e.sex === sex && (demo || !e.demo)).map(e => e.year))].sort(); }
+  fieldTimes(comp, code, sex) { const ts = this.db.events.filter(e => e.comp === comp && e.code === code && e.sex === sex).flatMap(e => e.ok.slice(0, 8).map(r => r.time)).sort((a, b) => a - b); return ts; }
+  suggest(comp, code, sex) { const ts = this.fieldTimes(comp, code, sex); if (!ts.length) return '30.00'; const v = ts[Math.floor(ts.length * 0.45)]; return this.M.core.fmtTime(v); }
+  suggestTimes() { const s = this.state; this.setState({ aTime: this.suggest(s.aComp, s.aCode, s.aSex), cTime: this.suggest(s.cComp, s.cCode, s.cSex), rTime: this.suggest(s.rComp, s.rCode, s.rSex) }); this.after(() => { if (this.state.tab === 'calc') this.runCalc(); }); }
+  fixArena(patch) {
+    const s = { ...this.state, ...patch };
+    if (patch.aCode && !this.evAvail(s.aComp, s.aSex).includes(s.aCode)) { const alt = this.compsFor(s.aCode, s.aSex)[0]; if (alt) s.aComp = alt; }
+    const evs = this.evAvail(s.aComp, s.aSex); if (!evs.includes(s.aCode)) s.aCode = evs[0];
+    const ys = this.yearsAvail(s.aComp, s.aCode, s.aSex); if (!ys.includes(s.aYear)) s.aYear = ys[ys.length - 1];
+    const out = { aComp: s.aComp, aSex: s.aSex, aCode: s.aCode, aYear: s.aYear, aMode: s.aMode, aPool: s.aCode === '100M' ? 25 : s.aPool };
+    if (patch.aComp || patch.aSex || patch.aCode) out.aTime = this.suggest(s.aComp, s.aCode, s.aSex);
+    return out;
+  }
+  setArena(patch) { const p = this.fixArena(patch); this.setState({ ...patch, ...p }); this.after(() => { if (this.state.raceState !== 'racing') this.prepareRace(); }); }
+  fixCalc(patch) {
+    const s = { ...this.state, ...patch };
+    if (patch.cCode && !this.evAvail(s.cComp, s.cSex, false).includes(s.cCode)) { const alt = this.compsFor(s.cCode, s.cSex)[0]; if (alt) s.cComp = alt; }
+    const evs = this.evAvail(s.cComp, s.cSex, false); if (!evs.includes(s.cCode)) s.cCode = evs[0];
+    const ys = this.yearsAvail(s.cComp, s.cCode, s.cSex, false); let years = s.cYears.filter(y => ys.includes(y)); if (!years.length) years = ys;
+    const out = { cComp: s.cComp, cSex: s.cSex, cCode: s.cCode, cYears: years };
+    if (patch.cComp || patch.cSex || patch.cCode) out.cTime = this.suggest(s.cComp, s.cCode, s.cSex);
+    return out;
+  }
+  setCalc(patch, delay = 0) { const p = this.fixCalc(patch); this.setState({ ...patch, ...p }); clearTimeout(this._ct); this._ct = setTimeout(() => this.after(() => this.runCalc()), delay); }
+
+  setAvatar(patch) {
+    const av = { ...this.state.avatar, ...patch }; this.setState({ avatar: av });
+    if (this.viewer) this.viewer.setConfig(av);
+    clearTimeout(this._av); this._av = setTimeout(() => this.persistAvatar(), 400);
+  }
+  persistAvatar() { const av = this.state.avatar; if (!av) return; try { localStorage.setItem(LS, JSON.stringify(av)); } catch (e) { } this.arena && this.arena.setYou(av); window.raiaConta && window.raiaConta.salvarAvatar(av); }
+  setConta(nome, salvo) {
+    this.setState({ conta: nome || null });
+    if (nome && this.state.avatar) {
+      const sw = this.M && this.M.sw; const base = salvo && salvo.avatar ? { ...(sw ? sw.DEFAULT_AVATAR : {}), ...salvo.avatar } : this.state.avatar;
+      const av = { ...base, name: nome }; this.setState({ avatar: av }); if (this.viewer) this.viewer.setConfig && this.viewer.setConfig(av);
+      if (salvo && salvo.tec) { this.setState({ tec: salvo.tec }); try { localStorage.setItem('raia.tec.v1', JSON.stringify(salvo.tec)); } catch (e) { } } else if (nome) { window.raiaConta && window.raiaConta.salvarTec(this.state.tec || {}); }
+      this.after(() => this.persistAvatar());
+    }
+    if (this.state.dockTab === 'rank' || this.state.dockTab2 === 'rank') this.after(() => this.drawDock());
+  }
+
+  prepareRace() {
+    if (!this.db || !this.arena) return;
+    const { core } = this.M; const s = this.state; const av = s.avatar; const db = this.db;
+    const yourT = core.parseTime(s.aTime); if (!isFinite(yourT) || yourT <= 5) return;
+    const sexL = s.aSex === 'F' ? 'Feminino' : 'Masculino'; const ev0 = core.EVENTS[s.aCode];
+    let opp = [], title = '', record = null;
+    const short = n => { const p = String(n).split(' ').filter(w => w.length > 2 || /^[A-Z]/.test(w)); return p.length > 1 ? p[0] + ' ' + p[p.length - 1] : n; };
+    const isRel = !!ev0.relay; const relName = r => r.team + (r.squad && r.squad !== 'A' ? ' ' + r.squad : '');
+    const mk = (r, label) => ({ name: isRel ? relName(r) : r.name, short: isRel ? relName(r) : short(r.name), team: r.team, color: core.teamColor(r.team, r.comp), seed: r.time, ref: r.time, label: label || (r.comp + ' ' + r.year) });
+    if (s.aMode === 'final') {
+      const ev = db.findEvent(s.aComp, s.aYear, s.aCode, s.aSex);
+      opp = ev ? ev.ok.slice(0, 9).map(r => mk(r)) : [];
+      title = `${ev0.label} ${sexL} · ${s.aComp} ${s.aYear}`;
+      record = ev && ev.record ? ev.record : null;
+    } else if (s.aMode === 'campeoes') {
+      for (const c of ['InterUSP', 'TUSCA']) for (const y of [2023, 2024, 2025, 2026]) { const ev = db.findEvent(c, y, s.aCode, s.aSex); if (ev && ev.ok[0]) opp.push(mk(ev.ok[0], `campeão ${c} ${y}`)); }
+      title = `${ev0.label} ${sexL} · Campeões de todas as edições`;
+     } else {
+      const best = new Map(); for (const r of db.results) { if (r.code !== s.aCode || r.sex !== s.aSex || r.status !== 'OK') continue; if (!isRel && r.ath < 0) continue; const key = isRel ? r.team : r.ath; if (!best.has(key) || r.time < best.get(key).time) best.set(key, r); }
+      opp = [...best.values()].sort((a, b) => a.time - b.time).slice(0, 9).map(r => mk(r));
+      title = `${ev0.label} ${sexL} · Top histórico (todas as edições)`;
+    }
+    if (!record) { const all = db.results.filter(r => r.code === s.aCode && r.sex === s.aSex && r.status === 'OK').map(r => r.time); record = all.length ? Math.min(...all) : null; }
+    opp = opp.slice(0, 9); this.oppSeeds = opp;
+    opp.forEach(o => { const raw = this.oppOv(s.aCode, o.name); if (raw) o.ov = (this.validOv(s.aCode, s.aSex, o.seed, s.aPool, raw) || {}).ov || null; });
+    const rr = core.rng((Date.now() % 100000) + 7); const sig = db.sigma.sigma;
+    const lanes = opp.map(o => ({ ...o, time: s.aNoise && !s.aWatch ? +(o.seed * (1 + sig * core.normal(rr))).toFixed(2) : o.seed }));
+    const youName = isRel ? (av.team ? av.team + ' · você' : 'Sua equipe') : (av.name || 'Você');
+    if (!s.aWatch) lanes.push({ ov: (this.validOv(s.aCode, s.aSex, yourT, s.aPool, this.myOv(s.aCode)) || {}).ov || null, name: youName, short: youName, team: av.team || '', color: core.YOU, seed: yourT, ref: yourT, time: s.aNoise ? +(yourT * (1 + 0.008 * core.normal(rr))).toFixed(2) : yourT, isYou: true, label: 'você' });
+    this.arena.setRecordLine(s.aRecord);
+    this.arena.setRace({ styles: s.aNoise, title, code: s.aCode, sex: s.aSex, lanes, poolLen: s.aPool, record: s.aRecord ? record : null, youCfg: av, seed: Date.now() % 997 });
+    this.arena.setCamera(s.cam);
+    this._scrubbed = false; this.arena.setFollow(null);
+    const fList = this.arena.swimmers.slice().sort((p, q) => p.lane - q.lane).map(x => ({ v: String(x.lane), l: x.lane + ' · ' + (x.isYou ? ((this.state.avatar && this.state.avatar.name) || 'Você') : (x.traj && x.traj.relay ? (x.short || x.name) : this.shortName(x.short || x.name))), c: x.isYou ? '#FFD23F' : x.color }));
+    this.setState({ follow: null, fList, raceState: 'ready', results: null, cubeOn: false, playing: false, scrub: 0, raceTitle: title, tmax: Math.max(...lanes.map(l => l.time)) });
+    this.after(() => { this.syncBoard(); this.drawDock(); this.measureBar(); });
+  }
+  startRace() {
+    if (this.state.raceState === 'finished' || this.state.raceState === 'racing') this.prepareRace();
+    if (this.snd) { this.snd.unlock(); this.snd.setScene('race'); }
+    setTimeout(() => { this.arena.start(); this._scrubbed = false; this.setState({ raceState: 'racing', setupOpen: false, cubeOn: false, playing: true }); this.after(() => this.drawDock()); }, 30);
+  }
+  onRaceFinish(res) {
+    const { core } = this.M; const win = res[0];
+    const rows = res.map(r => ({ place: r.place + 'º', name: r.isYou ? `${r.name} (você)` : r.name, team: r.team, color: r.color, time: core.fmtTime(r.T), gap: r.place === 1 ? '—' : '+' + (r.T - win.T).toFixed(2), ref: r.isYou ? 'meta ' + core.fmtTime(r.ref) : core.fmtTime(r.ref), bg: r.isYou ? 'rgba(255,210,63,.14)' : 'rgba(141,179,207,.04)', nc: r.isYou ? '#FFD23F' : '#eaf6ff', pc: r.place === 1 ? '#E8B931' : r.place === 2 ? '#C9D2DA' : r.place === 3 ? '#C07A43' : '#8db3cf' }));
+    if (this.snd) setTimeout(() => this.snd && this.snd.setScene('menu'), 2500);
+    this.setState({ raceState: 'finished', results: rows, dockOpen: true, playing: false, scrub: this.arena.race.Tmax, tmax: this.arena.race.Tmax });
+    this.after(() => { this.syncBoard(); this.drawDock(); });
+    const you = res.find(r => r.isYou); const s0 = this.state;
+    if (you && window.raiaConta) window.raiaConta.enviarResultado({ code: s0.aCode, sex: s0.aSex, comp: s0.aComp, year: s0.aYear, mode: s0.aMode, pool: s0.aPool, time: you.T, place: you.place, n: res.length }).then(ok => { if (ok && (this.state.dockTab === 'rank' || this.state.dockTab2 === 'rank')) this.drawDock(); });
+  }
+   drawRaceCharts() { this.drawDock(); }
+  shortName(n) { const p = String(n || '').split(' ').filter(w => w.length > 2 || /^[A-Z]/.test(w)); return p.length > 1 ? p[0] + ' ' + p[p.length - 1] : (n || ''); }
+  compsFor(code, sex) { return ['InterUSP', 'TUSCA'].filter(c => this.db.events.some(e => e.comp === c && e.code === code && e.sex === sex)); }
+  arenaEntries() {
+    const data = this.arena && this.arena.trajectories(); if (!data || !this.M.bio) return null;
+    const sp = this.arena.race.spec;
+    const done = this.arena.state === 'finished' || this.state.raceState === 'finished';
+    const es = data.swimmers.slice().sort((a, b) => a.lane - b.lane).map(s => ({ id: 'L' + s.lane, name: s.name, short: s.name, team: s.team, color: s.color, isYou: s.isYou, place: s.place, tag: done ? s.place + 'º' : String(s.lane), plan: s.traj }));
+    return [{ id: 'pro', name: 'PRO · média de finalistas de elite', short: 'PRO', isPro: true, color: '#eaf6ff', plan: this.M.bio.proPlan(sp.code, sp.sex, this.arena.poolLen) }, ...es];
+  }
+  setFollow(lane) {
+    const A = this.arena; if (!A) return; A.setFollow(lane); A.updateBoard && A.updateBoard(true); this._lv = 0; setTimeout(() => this.updateLive(A.t), 30);
+    if (lane != null) { A.setCamera('voce'); this.setState({ follow: lane, cam: 'voce' }); } else this.setState({ follow: null });
+    this.after(() => { if (['passagens', 'perda'].includes(this.state.dockTab) || ['passagens', 'perda'].includes(this.state.dockTab2)) this.drawDock(); });
+  }
+  dockTime() { const A = this.arena; if (!A || !A.race) return Infinity; if (A.state === 'finished') return this._scrubbed ? this.state.scrub : Infinity; return A.state === 'ready' ? 0 : Math.max(0, A.t); }
+  dockChart(el, tab, o) {
+    if (!el || !tab || tab === 'res') return null;
+    if (tab === 'rank') { const s = this.state; return window.raiaConta ? window.raiaConta.desenharRanking(el, { code: s.aCode, sex: s.aSex, pool: s.aPool }) : null; }
+    try {
+      if (tab === 'marey' || tab === 'heat') {
+        if (!this.M.rc) return null; const dummy = document.createElement('div');
+        const rc = this.M.rc.drawRace(tab === 'marey' ? el : dummy, tab === 'heat' ? el : dummy, this.arena.trajectories(), { onSeek: o.onSeek });
+        return { setTime: t => rc.setTime(isFinite(t) ? t : this.arena.race.Tmax) };
+      }
+      if (!this.M.bc) return null; const es = this.arenaEntries(); if (!es) return null;
+     if (tab === 'perda') { const s = this.state; const sel = (s.follow != null && es.find(e => e.id === 'L' + s.follow)) || es.find(e => e.isYou) || es[1]; const win = es.filter(e => !e.isPro).sort((a, b) => a.plan.T - b.plan.T)[0]; return this.M.bc.perda(el, sel, win === sel ? null : win, o); }
+      return this.M.bc.CHARTS[tab](el, es, o);
+    } catch (e) { console.error('RAIA dock: ' + (e && e.message)); return null; }
+  }
+  drawDock() {
+    const s = this.state; this.dockApi = null; this.dockApi2 = null;
+    if (!s.dockOpen || !s.hud || s.tab !== 'arena' || !this.arena || !this.arena.race) return;
+    const hov = id => [this.dockApi, this.dockApi2].forEach(a => a && a.highlight && a.highlight(id));
+    const o = { onSeek: t => this.seekArena(t), onHover: hov, onPick: id => { const m = /^L(\d+)$/.exec(id || ''); if (m) this.setFollow(+m[1]); }, focus: s.follow != null ? 'L' + s.follow : null, showT: s.lay.t, showS: s.lay.s, showDir: s.lay.dir, unit: s.pUnit };
+    this.dockApi = this.dockChart(this.ref('dock').current, s.dockTab, o);
+   if (s.dockTab2 && s.wide) this.dockApi2 = this.dockChart(this.ref('dock2').current, s.dockTab2, o);
+    const t = this.dockTime(); [this.dockApi, this.dockApi2].forEach(a => a && a.setTime(t));
+    const sel = this.ref('d2sel').current; if (sel) sel.value = s.dockTab2 || '';
+  }
+  onArenaTime(t, T) {
+    const A = this.arena; if (!A) return;
+    if (this.dockApi || this.dockApi2) { const dt = this.dockTime(); this.dockApi && this.dockApi.setTime(dt); this.dockApi2 && this.dockApi2.setTime(dt); }
+    this.updateLive(t);
+    if (this.props.director) this.direct(t);
+    const now = performance.now();
+    if (A.state !== 'finished' && A.state !== 'ready') { const tt = Math.max(0, Math.min(t, T)); const inp = this.ref('scrub').current; if (inp) inp.value = tt; const lb = this.ref('scrubLbl').current; if (lb) lb.textContent = this.M.core.fmtTime(tt) + 's'; if (now - (this._st || 0) > 700) { this._st = now; this.setState({ scrub: tt }); } }
+    const playing = !A.paused && (A.state === 'racing' || A.state === 'replay' || A.state === 'countdown');
+    if (playing !== !!this.state.playing) this.setState({ playing });
+  }
+  seekArena(t) { if (!this.arena || !this.arena.race) return; this.arena.seek(t); this._scrubbed = true; this.dockApi && this.dockApi.setTime(t); this.dockApi2 && this.dockApi2.setTime(t); this.setState({ scrub: t, playing: false }); }
+  updateLive(t) {
+    if (!this._mb || performance.now() - this._mb > 1500) { this._mb = performance.now(); this.measureBar(); }
+    { const el0 = this.ref('live').current; if (el0 && t <= 0 && this.arena && this.arena.state !== 'finished') { el0.style.width = 'auto'; el0.innerHTML = '<div style="display:flex;align-items:center;gap:10px;white-space:nowrap"><span style="font:700 9.5px/1 JetBrains Mono,monospace;letter-spacing:.14em;color:#8db3cf">●</span><span style="font:700 13px/1 Barlow,sans-serif;color:#cfe3f2">Aguardando a largada</span></div>'; return; } }
+    const el = this.ref('live').current; const A = this.arena; if (!el || !A || !A.race || !el.offsetParent) return;
+    const now = performance.now(); if (now - (this._lv || 0) < 70) return; this._lv = now;
+    const tt = Math.max(0, t); const ds = A.swimmers.map(s => ({ s, d: s.traj.dAt(tt) }));
+    const order = ds.slice().sort((a, b) => { const fa = tt >= a.s.T, fb = tt >= b.s.T; if (fa && fb) return a.s.T - b.s.T; if (fa) return -1; if (fb) return 1; return b.d - a.d; });
+    const lead = order[0]; const me = (this.state.follow != null && ds.find(x => x.s.lane === this.state.follow)) || ds.find(x => x.s.isYou) || lead; const S = me.s, P = S.traj, d = me.d; const fin = tt >= P.T;
+    const zi = P.zoneAt(Math.min(d, P.dist - 0.01)); const leg = P.legAt(tt);
+    let ph = 'Nado', pc = '#56B4E9';
+    if (t < 0) { ph = 'No bloco'; pc = '#8db3cf'; } else if (fin) { ph = 'Chegou'; pc = '#FFD23F'; } else if (tt - leg.t0 < leg.rt) { ph = 'Reação'; pc = '#8db3cf'; } else if (zi.z === 0) { ph = 'Voo'; pc = '#eaf6ff'; } else if (zi.s.k > 0 && zi.s.wall > 0 && tt < zi.s.T0 + zi.s.wall) { ph = 'Virada'; pc = '#FFD23F'; } else if (zi.z === 1) { ph = 'Submerso'; pc = '#2FE0F0'; }
+    if (!S._marks) S._marks = P.strokeMarks(); if (!S._prof) S._prof = P.vProfile(120).filter(p => P.zoneAt(p[0]).z === 2);
+    let k = 0; while (k < S._marks.length && S._marks[k] < d) k++;
+    const v = fin || t <= 0 ? 0 : P.speedAt(Math.max(0.05, Math.min(P.dist - 0.05, d)));
+    const rank = order.indexOf(me) + 1; const gap = lead.d - d;
+    const pr = S._prof; const vmax = Math.max(...pr.map(p => p[1])) * 1.04, vmin = Math.min(...pr.map(p => p[1])) * 0.92;
+    const X = x => (x / P.dist * 226 + 7).toFixed(1), Y = y => (50 - (y - vmin) / (vmax - vmin) * 44).toFixed(1);
+    const vis = pr.filter(p => p[0] <= d); const path = vis.length > 1 ? 'M' + vis.map(p => X(p[0]) + ',' + Y(p[1])).join('L') : '';
+    const ghost = 'M' + pr.map(p => X(p[0]) + ',' + Y(p[1])).join('L');
+    const esc = x => String(x || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const m = (l, val) => '<div><div style="font:600 9px/1 JetBrains Mono,monospace;letter-spacing:.12em;color:#8db3cf;text-transform:uppercase">' + l + '</div><div style="font:800 24px/1.1 Big Shoulders Display,sans-serif;color:#eaf6ff">' + val + '</div></div>';
+    const nm0 = (S.short || S.name || '').replace(/ · você$/, ''); const nm = P.relay ? nm0 : nm0.split(' ').slice(0, 2).join(' ');
+    if (this.state.dockOpen) { el.style.width = 'auto'; el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;white-space:nowrap"><span style="font:700 9.5px/1 JetBrains Mono,monospace;letter-spacing:.14em;color:#FF5468">●</span><span style="font:800 17px/1.2 Big Shoulders Display,sans-serif;text-transform:uppercase;color:' + (S.isYou ? '#FFD23F' : '#eaf6ff') + '">' + rank + 'º · ' + esc(nm) + '</span><span style="padding:3px 7px;background:' + pc + ';color:#041226;font:700 11px/1 Barlow,sans-serif">' + ph + '</span><span style="font:600 12px/1 JetBrains Mono,monospace;color:#cfe3f2">' + d.toFixed(1).replace('.', ',') + ' m · ' + v.toFixed(2).replace('.', ',') + ' m/s · ' + k + ' braç.</span></div>'; return; }
+    el.style.width = '';
+    el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font:700 9.5px/1 JetBrains Mono,monospace;letter-spacing:.14em;color:#FF5468;white-space:nowrap">● AO VIVO</span><span style="font:600 9px/1 JetBrains Mono,monospace;letter-spacing:.1em;color:#56708a">ESTIMADO</span></div>'
+      + '<div style="font:800 19px/1.3 Big Shoulders Display,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:' + (S.isYou ? '#FFD23F' : '#eaf6ff') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + rank + 'º · ' + esc(nm) + '</div>'
+      + '<div style="display:flex;gap:6px;align-items:center"><span style="padding:4px 8px;background:' + pc + ';color:#041226;font:700 11.5px/1 Barlow,sans-serif;letter-spacing:.04em;white-space:nowrap">' + ph + (P.relay ? ' · perna ' + (leg.i + 1) : '') + '</span>' + (S.style && S.style.kind && S.style.kind !== 'relay' && this.M.bio ? '<span style="font:600 10px/1 JetBrains Mono,monospace;color:#8db3cf;white-space:nowrap">' + this.M.bio.STYLE_NAMES[S.style.kind] + '</span>' : '') + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px">' + m('Distância', d.toFixed(1).replace('.', ',') + ' m') + m('Velocidade', v.toFixed(2).replace('.', ',')) + m('Braçadas', k) + m('Ciclos/min', zi.z === 2 && !fin && t > 0 ? Math.round(zi.s.SR) : '—') + '</div>'
+      + '<svg viewBox="0 0 240 56" width="100%" height="56" style="display:block"><path d="' + ghost + '" fill="none" stroke="rgba(141,179,207,.25)" stroke-width="1"/><path d="' + path + '" fill="none" stroke="' + (S.isYou ? '#FFD23F' : '#2FE0F0') + '" stroke-width="2"/>' + (vis.length ? '<circle cx="' + X(vis[vis.length - 1][0]) + '" cy="' + Y(vis[vis.length - 1][1]) + '" r="3" fill="#FF5468"/>' : '') + '</svg>'
+      + '<div style="font:500 10.5px/1 JetBrains Mono,monospace;color:#8db3cf">' + (fin ? 'final ' + this.M.core.fmtTime(S.T) : rank === 1 ? 'liderando' : gap > 0.05 ? '−' + gap.toFixed(1).replace('.', ',') + ' m do líder' : 'colado no líder') + '</div>';
+  }
+  direct(t) {
+    const A = this.arena; if (!A || !A.race || A.paused || this.state.cubeOn) return;
+    const R = A.race; const lead = Math.max(...A.swimmers.map(s => s.traj.dAt(Math.max(0, t)))); const p = lead / R.dist; const you = A.swimmers.some(s => s.isYou);
+    const turn = A.swimmers.some(s => { const d = s.traj.dAt(Math.max(0, t)); const w = d % A.poolLen; return d < R.dist - 3 && (w > A.poolLen - 2.5 || w < 3) && d > 5; });
+    const cam = t < 1.4 ? 'bloco' : t > R.Tmax + 0.3 ? 'aerea' : p > 0.86 ? (you ? 'voce' : 'tv') : turn && A.poolLen === 50 ? 'aerea' : 'tv';
+    if (cam !== this._dirCam) { this._dirCam = cam; A.setCamera(cam); this.setState({ cam }); }
+  }
+  applyTweaks() {
+    const p = this.props; const key = [p.mood, p.crowd, p.director].join('|'); if (key === this._tk || !this.arena) return; this._tk = key;
+    this.arena.setMood(p.mood || 'final'); this.arena.setCrowd({ calma: 0.55, normal: 1, explosiva: 1.6 }[p.crowd || 'normal'] || 1); this._dirCam = null;
+  }
+  syncBoard() { const s = this.state; this.arena && this.arena.setBoard(!(s.dockOpen && (s.dockMax || window.innerHeight < 760))); }
+  toggleDock() { const open = !this.state.dockOpen; this.setState({ dockOpen: open }); this.after(() => { this.syncBoard(); if (open) this.drawDock(); }); }
+  setDockTab(k) { this.setState(st => ({ dockTab: k, dockOpen: true, dockTab2: st.dockTab2 === k ? (st.dockTab !== 'res' ? st.dockTab : null) : st.dockTab2 })); this.after(() => { this.syncBoard(); this.drawDock(); }); }
+  toggleSound() { const v = !this.state.soundOn; this.setState({ soundOn: v }); if (this.snd) { this.snd.unlock(); this.snd.setOn(v); } if (!v && window.speechSynthesis) window.speechSynthesis.cancel(); }
+  toggleHud() { const v = !this.state.hud; this.setState({ hud: v }); this.arena && this.arena.setHUD(v); this.after(() => { this.measureBar(); this.redrawVisible(); }); }
+  raioData() {
+    if (!this.M.bio || !this.db) return null;
+    const s = this.state; const key = [s.rComp, s.rYear, s.rCode, s.rSex, s.rPool, s.rTime, s.avatar && s.avatar.name, JSON.stringify(this.myOv(s.rCode)), JSON.stringify(s.oppTec)].join('|');
+    if (this._rk === key && this._re) return this._re;
+    const { core, bio } = this.M; const ev = this.db.findEvent(s.rComp, s.rYear, s.rCode, s.rSex); const isRel = !!core.EVENTS[s.rCode].relay;
+    const relName = r => r.team + (r.squad && r.squad !== 'A' ? ' ' + r.squad : '');
+    const es = (ev ? ev.ok.slice(0, 9) : []).map(r => ({ id: 'r' + r.id, name: isRel ? relName(r) : r.name, short: isRel ? relName(r) : this.shortName(r.name), team: r.team, color: core.teamColor(r.team, r.comp), plan: bio.racePlan({ code: s.rCode, sex: s.rSex, T: r.time, poolLen: s.rPool, ov: bio.mergeStyle(isRel ? bio.relayStyle(bio.seeded(r.id * 7 + 3)) : bio.randomStyle(bio.seeded(r.id * 7 + 3)), this.oppOv(s.rCode, isRel ? relName(r) : r.name) ? this.validOv(s.rCode, s.rSex, r.time, s.rPool, this.oppOv(s.rCode, isRel ? relName(r) : r.name)).ov : null) }) }));
+    const yt = core.parseTime(s.rTime); const av = s.avatar || {};
+    if (isFinite(yt) && yt > 5) es.push({ id: 'you', name: isRel ? 'Sua equipe' : (av.name || 'Você'), short: isRel ? 'Sua equipe' : (av.name || 'Você'), isYou: true, color: core.YOU, plan: bio.racePlan({ code: s.rCode, sex: s.rSex, T: yt, poolLen: s.rPool, ov: (this.validOv(s.rCode, s.rSex, yt, s.rPool, this.myOv(s.rCode)) || {}).ov || null }) });
+    es.sort((a, b) => a.plan.T - b.plan.T).forEach((e, i) => { e.place = i + 1; });
+    const out = [{ id: 'pro', name: 'PRO · média de finalistas de elite', short: 'PRO', isPro: true, color: '#eaf6ff', plan: bio.proPlan(s.rCode, s.rSex, s.rPool) }, ...es];
+    this._rk = key; this._re = out; return out;
+  }
+  raioSel(es) { const s = this.state; return es.find(e => e.id === s.rSel) || es.find(e => e.isYou) || es[1] || es[0]; }
+  drawRaio() {
+    if (!this.M.bc || !this.db || this.state.tab !== 'raiox') return;
+    const s = this.state;
+    { const el = s.rMode === 'todas' ? this.ref('rAll').current : this.ref('rA').current; if (!el || el.clientWidth < 50 || el.clientHeight < 50) { this._rr = (this._rr || 0) + 1; if (this._rr < 12) { clearTimeout(this._rrT); this._rrT = setTimeout(() => this.drawRaio(), 90); } return; } this._rr = 0; }
+    try {
+      if (s.rMode === 'todas') { this.drawPanorama(); return; }
+      const es = this.raioData(); if (!es) return;
+      const hover = id => (this.raioApis || []).forEach(a => a && a.highlight && a.highlight(id));
+      const o = { onHover: hover, onPick: id => { this.setState({ rSel: id }); this.after(() => this.drawRaio()); }, focus: s.rSel, showT: s.lay.t, showS: s.lay.s, showDir: s.lay.dir, unit: s.pUnit };
+      const mk = (k, el) => { if (!el) return null; if (k === 'perda') { const sel = this.raioSel(es); const win = es.find(e => !e.isPro && e.place === 1); return this.M.bc.perda(el, sel, win === sel ? null : win, o); } return this.M.bc.CHARTS[k](el, es, o); };
+      this.raioApis = [mk(s.rA, this.ref('rA').current), s.wide ? mk(s.rB, this.ref('rB').current) : null];
+      const t = this._raioT ?? Infinity; this.raioApis.forEach(a => a && a.setTime(t));
+    } catch (e) { console.error('RAIA raio-x: ' + (e && e.message)); }
+  }
+  stopRaio() { if (this._raf) cancelAnimationFrame(this._raf); this._raf = null; this._raioT = undefined; (this.raioApis || []).forEach(a => a && a.setTime(Infinity)); }
+  playRaio() {
+    if (this._raf) { this.stopRaio(); this.setState({ rPlaying: false }); return; }
+    const es = this.raioData(); if (!es) return; const Tm = Math.max(...es.map(e => e.plan.T)); const speed = Math.max(2, Tm / 12);
+    const t0 = performance.now(); this.setState({ rPlaying: true });
+    const step = () => { const t = (performance.now() - t0) / 1000 * speed; this._raioT = t; (this.raioApis || []).forEach(a => a && a.setTime(t)); if (t < Tm + 0.4 && this.state.tab === 'raiox') this._raf = requestAnimationFrame(step); else { this.stopRaio(); this.setState({ rPlaying: false }); } };
+    this._raf = requestAnimationFrame(step);
+  }
+  panRows() {
+    const s = this.state; const key = s.rPool + '|' + s.rSex; this._pan = this._pan || {};
+    if (this._pan[key]) return this._pan[key];
+    const { bio } = this.M; const rows = [];
+    for (const r of this.db.results) {
+      if (r.status !== 'OK' || !r.time || r.sex !== s.rSex) continue;
+      try { const p = bio.racePlan({ code: r.code, sex: r.sex, T: r.time, poolLen: r.code === '100M' ? 25 : s.rPool }); rows.push({ id: r.id, code: r.code, sex: r.sex, comp: r.comp, year: r.year, name: r.relay ? r.team : r.name, team: r.team, time: r.time, sum: bio.summary(p) }); } catch (e) { }
+    }
+    this._pan[key] = rows; return rows;
+  }
+  drawPanorama() {
+    const el = this.ref('rAll').current; if (!el || !this.M.bc) return;
+    if (!el.clientWidth) { this._pr = (this._pr || 0) + 1; if (this._pr < 8) setTimeout(() => this.drawPanorama(), 140); return; } this._pr = 0;
+    const s = this.state; const { bio, core } = this.M; const metric = bio.METRICS.find(m => m.k === s.rMetric) || bio.METRICS[0];
+    if (s.rAllView === 'corr') { const base = this.panRows().filter(r => (s.rAllComp === 'both' || r.comp === s.rAllComp) && !r.code.startsWith('4x')); base.forEach(r => { r.sum.time = r.time; }); const mets = [{ k: 'q', label: 'Nível' }, ...bio.METRICS.filter(m => ['rt', 'boStart', 'uw', 'swim', 'strokes', 'SR', 'DPS', 'start15'].includes(m.k)).map(m => ({ k: m.k, label: m.label })), { k: 'lossClean', label: 'Perda no nado' }]; this.panApi = this.M.bc.correlacoes(el, base, mets, { partial: s.rPartial, sel: s.rCorrSel || (s.rPartial ? ['boStart', 'start15'] : ['q', 'boStart']), onSel: v => { this.state.rCorrSel = v; } }); return; }
+    const rows = this.panRows().filter(r => s.rAllComp === 'both' || r.comp === s.rAllComp).map(r => ({ ...r, v: r.sum[metric.k] })).filter(r => r.v != null && isFinite(r.v));
+    const pros = {}; core.EVENT_ORDER.forEach(c => { pros[c] = bio.summary(bio.proPlan(c, s.rSex, c === '100M' ? 25 : s.rPool))[metric.k]; });
+    this.panApi = this.M.bc.panorama(el, rows, metric, pros, { onPick: r => { this.setState({ rMode: 'final', rComp: r.comp, rYear: r.year, rCode: r.code, rSex: r.sex, rSel: 'r' + r.id, rPool: r.code === '100M' ? 25 : s.rPool }); this.after(() => this.drawRaio()); } });
+  }
+  setRaio(patch) {
+    const s = { ...this.state, ...patch };
+    if (!this.compsFor(s.rCode, s.rSex).includes(s.rComp)) { const alt = this.compsFor(s.rCode, s.rSex)[0]; if (alt) s.rComp = alt; else s.rCode = '50L'; }
+    const ys = this.yearsAvail(s.rComp, s.rCode, s.rSex); if (!ys.includes(s.rYear)) s.rYear = ys[ys.length - 1];
+    if (s.rCode === '100M') s.rPool = 25;
+    const out = { ...patch, rComp: s.rComp, rCode: s.rCode, rYear: s.rYear, rPool: s.rPool };
+    if (patch.rCode || patch.rSex || patch.rComp) out.rTime = this.suggest(s.rComp, s.rCode, s.rSex);
+    if (this._raf) { this.stopRaio(); out.rPlaying = false; }
+    this.setState(out); this.after(() => this.drawRaio());
+  }
+  tc() {
+    const s = this.state; const ar = s.tecCtx === 'arena'; const core = this.M.core;
+    const code = ar ? s.aCode : s.rCode, sex = ar ? s.aSex : s.rSex, pool = ar ? s.aPool : s.rPool; const who = s.tecWho || 'you';
+    let T = core.parseTime(ar ? s.aTime : s.rTime);
+    if (who !== 'you') { const ent = ar ? (this.oppSeeds || []).find(o => o.name === who) : (this._re || []).find(e => e.name === who && !e.isYou && !e.isPro); T = ent ? (ent.seed ?? ent.plan.T) : NaN; }
+    return { ar, code, sex, pool, who, T, store: who === 'you' ? 'tec' : 'oppTec', key: who === 'you' ? code : code + '|' + who };
+  }
+  oppOv(code, name) { const o = this.state.oppTec && this.state.oppTec[code + '|' + name]; return o && Object.keys(o).length ? o : null; }
+  validOv(code, sex, T, pool, raw) {
+    if (!this.M.bio || !isFinite(T)) return null; raw = raw || {}; const key = [code, sex, T, pool, JSON.stringify(raw)].join('|'); this._vo = this._vo || {};
+    if (!this._vo[key]) { let ov = { ...raw }; let L = this.M.bio.techLimits(code, sex, T, pool, ov); let fixed = false; if (L) { for (const k of ['rt', 'tk', 'boS', 'boT', 'uwS', 'split', 'strokes']) { if (ov[k] == null || !L[k]) continue; const v = Math.max(L[k][0], Math.min(L[k][1], ov[k])); if (Math.abs(v - ov[k]) > 1e-6) { ov[k] = v; fixed = true; } } if (fixed) L = this.M.bio.techLimits(code, sex, T, pool, ov); } this._vo[key] = { ov, L, fixed }; }
+    return this._vo[key];
+  }
+  setTecCur(patch) {
+    const c = this.tc(); const store = { ...(this.state[c.store] || {}) }; const cur = { ...(store[c.key] || {}), ...patch }; Object.keys(cur).forEach(k => { if (cur[k] == null) delete cur[k]; });
+    if (Object.keys(cur).length) store[c.key] = cur; else delete store[c.key];
+    this.setState({ [c.store]: store }); if (c.store === 'tec') { try { localStorage.setItem('raia.tec.v1', JSON.stringify(store)); } catch (e) { } window.raiaConta && window.raiaConta.salvarTec(store); }
+    clearTimeout(this._tecT); this._tecT = setTimeout(() => this.after(() => { if (c.ar) { if (this.state.raceState !== 'racing') this.prepareRace(); } else this.drawRaio(); }), 160);
+  }
+  myOv(code) { const o = this.state.tec && this.state.tec[code]; if (!o || !this.M || !this.M.core) return null; const out = {}; for (const k of ['rt', 'tk', 'boS', 'uwS', 'boT', 'split', 'strokes']) if (o[k] != null && isFinite(o[k])) out[k] = o[k]; return Object.keys(out).length ? out : null; }
+  setTec(code, patch) {
+    const cur = { ...(this.state.tec[code] || {}), ...patch }; Object.keys(cur).forEach(k => { if (cur[k] == null) delete cur[k]; });
+    const tec = { ...this.state.tec, [code]: cur }; if (!Object.keys(cur).length) delete tec[code];
+    this.setState({ tec }); try { localStorage.setItem('raia.tec.v1', JSON.stringify(tec)); } catch (e) { } window.raiaConta && window.raiaConta.salvarTec(tec);
+    clearTimeout(this._tecT); this._tecT = setTimeout(() => this.after(() => this.drawRaio()), 120);
+  }
+  tecInfo() {
+    if (!this.M.bio) return null; const c = this.tc(); if (!isFinite(c.T) || c.T < 10) return null;
+    const raw = (this.state[c.store] || {})[c.key] || {}; const V = this.validOv(c.code, c.sex, c.T, c.pool, raw); if (!V || !V.L) return null;
+    return { L: V.L, ov: V.ov, T: c.T, fixed: V.fixed, c, own: raw };
+  }
+  setObsView(panel, v) {
+    const s = this.state; const patch = panel === 'A' ? { oA: v } : { oB: v };
+    if (panel === 'A' && v === s.oB) patch.oB = s.oA; if (panel === 'B' && v === s.oA) patch.oA = s.oB;
+    this.setState(patch); this.after(() => this.obsApi && this.obsApi.redraw());
+  }
+
+  runCalc() {
+    if (!this.db) return; const { core } = this.M; const s = this.state; const t = core.parseTime(s.cTime);
+    const model = core.chanceModel(this.db, { code: s.cCode, sex: s.cSex, comp: s.cComp, years: s.cYears, time: t, sigmaYou: s.cSigma / 100 });
+    this.calcModel = model;
+    if (!model) { this.setState({ calc: { empty: true, msg: !isFinite(t) ? 'Digite um tempo válido (ex.: 26.50 ou 1:02.30).' : 'Não há finais pontuadas para essa combinação.' } }); return; }
+    const W = s.cMode === 'todos' ? model.main.pool : model.main.avg; const T = model.targets(s.cMode === 'todos' ? 'pool' : 'avg');
+    const P = v => (v * 100 < 1 && v > 0 ? '<1' : Math.round(v * 100)) + '%';
+    const kpis = [
+      { l: 'Ouro', v: P(W.p1), s: 'chance de vencer (oficial)', c: '#E8B931' },
+      { l: 'Pódio', v: P(W.p3), s: 'top 3 oficial', c: '#2FE0F0' },
+      { l: 'Pontuar', v: P(W.pS), s: `top ${model.fields[0].table.length} oficial`, c: '#B9A6F5' },
+      { l: 'Pontos', v: W.ePts.toFixed(1).replace('.', ','), s: 'média das simulações', c: '#8db3cf' },
+      { l: 'Colocação', v: W.eRank.toFixed(1).replace('.', ',') + 'º', s: 'média das simulações', c: '#8db3cf' }
+    ];
+    const ft = v => v ? core.fmtTime(v) : '—';
+    const targets = [{ l: '50% de ouro', v: ft(T.g50), c: '#E8B931' }, { l: '90% de ouro', v: ft(T.g90), c: '#E8B931' }, { l: '50% de pódio', v: ft(T.p50), c: '#2FE0F0' }, { l: '50% de pontuar', v: ft(T.s50), c: '#B9A6F5' }];
+    const yearRows = model.perYear.map(p => ({ year: p.year, pos: `${p.posOff}º/${p.nOff}`, pc: p.posOff === 1 ? '#E8B931' : p.posOff <= 3 ? '#2FE0F0' : '#eaf6ff', win: core.fmtTime(p.win), gap: (p.gap > 0 ? '+' : '') + p.gap.toFixed(2), pts: p.pts }));
+    this.setState({ calc: { kpis, targets, yearRows, sigmaF: model.sigmaField, n: this.db.sigma.n, mField: model.mField } });
+    this.after(() => this.drawCalc());
+  }
+  drawCalc() {
+    if (!this.M.calc || !this.calcModel) { if (this.M.calc) this.M.calc.drawCalc({ curve: this.ref('cCurve').current, pos: this.ref('cPos').current, fields: this.ref('cFields').current }, null, {}); return; }
+    const t = this.M.core.parseTime(this.state.cTime);
+    this.M.calc.drawCalc({ curve: this.ref('cCurve').current, pos: this.ref('cPos').current, fields: this.ref('cFields').current }, this.calcModel, { time: t, mode: this.state.cMode, onTime: v => this.setCalc({ cTime: this.M.core.fmtTime(v) }) });
+  }
+
+  obsFilters() { const s = this.state; return { comps: s.oComps, years: s.oYears, sex: s.oSex, events: s.oEvents, teams: s.oTeams }; }
+  initObs() {
+    if (!this.M.obs) return;
+    const els = { swarm: this.ref('swarm').current, ridge: this.ref('ridge').current, bump: this.ref('bump').current, matrix: this.ref('matrix').current, pc: this.ref('pc').current, pca: this.ref('pca').current, chord: this.ref('chord').current, lorenz: this.ref('lorenz').current };
+    if (!this.obsApi) {
+      this.obsApi = this.M.obs.createObservatory(els, this.db, {
+        onSelection: info => this.setState({ selInfo: info }),
+        onAthlete: id => this.openDrawer(id),
+        onToggleTeam: team => this.setObs({ oTeams: this.state.oTeams.includes(team) ? this.state.oTeams.filter(t => t !== team) : [...this.state.oTeams, team] }),
+        onCounts: c => this.setState({ counts: c })
+      });
+      this.obsApi.state.colorBy = this.state.oColor; this.obsApi.state.k = this.state.pcaK; this.obsApi.state.order = this.state.order;
+      this.obsApi.setFilters(this.obsFilters());
+    } else this.obsApi.redraw();
+  }
+  setObs(patch) {
+    const s = { ...this.state, ...patch };
+    if (!s.oComps.length) return; if (!s.oYears.length) return; if (!s.oEvents.length) return;
+    const valid = new Set(s.oComps.flatMap(c => this.db.teams[c] || [])); const teams = s.oTeams.filter(t => valid.has(t));
+    this.setState({ ...patch, oTeams: teams }); this.after(() => { this.obsApi && this.obsApi.setFilters(this.obsFilters()); });
+  }
+
+  renderVals() {
+    const s = this.state; const ready = !!this.db && !!this.M; const core = ready ? this.M.core : null; const swm = ready ? this.M.sw : null;
+    const av = s.avatar || { name: 'Você', sigla: 'VOC', team: '', sex: 'M' };
+    const tab = s.tab; const disp = (on, d = 'block') => on ? d : 'none';
+    const chip = (on, label, fn, kind) => ({ label, on: fn, ...this.chip(on, kind) });
+    const vals = {
+      panelBottom: (s.barB || 74) + 'px', arenaRef: this.ref('arena'), barRef: this.ref('bar'), dockRef: this.ref('dock'), rARef: this.ref('rA'), rBRef: this.ref('rB'), rAllRef: this.ref('rAll'), vestRef: this.ref('vest'), teamSelRef: this.ref('teamSel'), marRef: this.ref('mar'), heatRef: this.ref('heat'),
+      calcCurveRef: this.ref('cCurve'), calcPosRef: this.ref('cPos'), calcFieldsRef: this.ref('cFields'),
+      swarmRef: this.ref('swarm'), ridgeRef: this.ref('ridge'), bumpRef: this.ref('bump'), matrixRef: this.ref('matrix'), pcRef: this.ref('pc'), pcaRef: this.ref('pca'), chordRef: this.ref('chord'), lorenzRef: this.ref('lorenz'), tlRef: this.ref('tl'), radarRef: this.ref('radar'),
+      loading: s.loading, loadingMsg: s.loadingMsg, capyDisp: this._capy ?? (this._capy = Math.random() < 0.45 ? 'block' : 'none'), capyMsg: this._capyMsg || (this._capyMsg = ['capivara em aquecimento', 'capivara conferindo as súmulas', 'capivara ajustando a touca'][Math.floor(Math.random() * 3)]),
+      cvd: s.cvd, cvdFilter: s.cvd === 'none' ? 'none' : `url(#cvd-${s.cvd})`, onCvd: e => this.setState({ cvd: e.target.value }),
+      tabs: TABS.map(([id, label, n]) => ({ label, n, bg: 'url(' + JSON.stringify((tab === id ? TAB_ICONS.on : TAB_ICONS.off)[id] || TAB_ICONS.off.inicio) + ')', go: () => this.go(id), color: tab === id ? '#eaf6ff' : '#8db3cf', line: tab === id ? '#FFD23F' : 'transparent' })),
+      goHome: () => this.go('inicio'), goVest: () => this.go('vestiario'), goCalc: () => this.go(R2 ? 'calc' : 'obs'), heroBtn3: R2 ? 'Minha chance' : 'Observatório', dockBtnDisp: R2 ? 'flex' : 'none', goObs: () => this.go('obs'), goRaio: () => this.go('raiox'),
+      contaLabel: s.conta ? 'Sair' : 'Entrar', contaTitle: s.conta ? `Conectado como ${s.conta} · clique para sair` : 'Entrar só com o nome para salvar seu nadador e aparecer no ranking', contaFg: s.conta ? '#8db3cf' : '#2FE0F0', contaBd: s.conta ? 'rgba(141,179,207,.25)' : 'rgba(47,224,240,.45)', contaOn: () => { const c = window.raiaConta; if (!c) return; if (this.state.conta) c.sair(); else c.abrir(); },
+      avatarName: av.name || 'Você', avatarSigla: (av.sigla || 'VOC').slice(0, 3).toUpperCase(), avatarNameRaw: av.name || '', avatarSiglaRaw: av.sigla || '',
+      avatarTeamLabel: (av.team ? (ready && core.TEAM_NAMES[av.team] ? core.TEAM_NAMES[av.team] : av.team) : 'Independente') + (av.sex === 'F' ? ' · categoria feminina' : ' · categoria masculina'),
+      stageDisplay: disp(tab === 'inicio' || tab === 'arena'), heroDisplay: disp(tab === 'inicio'), arenaUIDisplay: disp(tab === 'arena'),
+      vestDisplay: disp(tab === 'vestiario'), calcDisplay: disp(tab === 'calc'), obsDisplay: disp(tab === 'obs', 'flex'), raioDisplay: disp(tab === 'raiox', 'flex'), metDisplay: disp(tab === 'metodo'),
+      drawerDisplay: disp(s.drawer != null && tab === 'obs', 'flex')
+    };
+    if (!ready) return { ...vals, ...EMPTY, dockChip: this.chip(false), heroStats: [], tabs: vals.tabs, aCompChips: [], aSexChips: [], aEventChips: [], aModeChips: [], aYearChips: [], aToggles: [], camChips: [], speedChips: [], resultRows: [], poseChips: [], teamOptions: [], avSexChips: [], genderChips: [], frameChips: [], bodyChips: [], hairChips: [], hairSw: [], facialChips: [], faceChips: [], noseChips: [], markChips: [], skinSw: [], suitChips: [], patternChips: [], suitSw1: [], suitSw2: [], capChips: [], capSw1: [], capSw2: [], goggleChips: [], hatChips: [], hatSw: [], accChips: [], medalChips: [], celeChips: [], cCompChips: [], cSexChips: [], cEventChips: [], cYearChips: [], cModeChips: [], kpis: [], targets: [], yearRows: [], oCompChips: [], oYearChips: [], oSexChips: [], oColorChips: [], oEventChips: [], oTeamChips: [], pcaChips: [], orderChips: [], metStats: [], metSteps: [], metQs: [], metBlocks: [], dr: { name: '', team: '', meta: '', cta: '', color: '#eaf6ff', kpis: [], bests: [] }, anaChip: this.chip(false), cubeChip: this.chip(false), aModeHint: '', aTimeHint: '', startLabel: 'Largar!', raceTitle: '', scrubLabel: '', avHeightLabel: '', avBuildLabel: '', cModeHint: '', cSigmaLabel: '', cSigmaHint: '', posNote: '', obsCountsLabel: '', selLabel: '', metPdfCount: '', aShowYears: false, calcEmpty: false, calcEmptyMsg: '', selBarDisplay: 'none', timelineDisplay: 'none', setupDisplay: 'none', setupBtnDisplay: 'none', analysisDisplay: 'none', heroStats: [] };
+    if (this.arena) this.after(() => this.applyTweaks());
+    const db = this.db; const E = core.EVENTS;
+    const nTeams = new Set(db.results.map(r => r.team)).size;
+    vals.heroStats = [{ v: db.events.length, l: 'provas' }, { v: db.results.length.toLocaleString('pt-BR'), l: 'resultados' }, { v: db.athletes.length, l: 'atletas' }, { v: nTeams, l: 'equipes' }];
+    const evA = this.evAvail(s.aComp, s.aSex);
+    vals.aCompChips = ['InterUSP', 'TUSCA'].map(c => chip(s.aComp === c, c, () => this.setArena({ aComp: c })));
+    vals.aSexChips = [['M', 'Masc'], ['F', 'Fem']].map(([k, l]) => chip(s.aSex === k, l, () => this.setArena({ aSex: k })));
+    vals.aEventChips = core.EVENT_ORDER.map(c => ({ ...chip(s.aCode === c, EV_SHORT[c], () => this.setArena({ aCode: c })), title: E[c].label + (evA.includes(c) ? '' : ' · ' + this.compsFor(c, s.aSex).join('/')), op: evA.includes(c) ? 1 : 0.5 }));
+    vals.aModeChips = [['final', 'Final'], ['campeoes', 'Campeões'], ['top', 'Top histórico']].map(([k, l]) => chip(s.aMode === k, l, () => this.setArena({ aMode: k })));
+    vals.aShowYears = s.aMode === 'final';
+    vals.aYearChips = this.yearsAvail(s.aComp, s.aCode, s.aSex).map(y => chip(s.aYear === y, String(y), () => this.setArena({ aYear: y })));
+    const yt = core.parseTime(s.aTime);
+     if (isFinite(yt)) {
+      const ref = db.ref[s.aCode + '|' + s.aSex]; const it = ref ? Math.round(1000 * Math.pow(ref / yt, 3)) : null;
+      const ev = db.findEvent(s.aComp, s.aYear, s.aCode, s.aSex); const pos = ev ? 1 + ev.ok.filter(r => r.time < yt).length : null;
+      vals.aTimeHint = `Índice técnico ${it ?? '—'}`;
+    } else vals.aTimeHint = '26.50 ou 1:02.30';
+    vals.aTime = s.aTime; vals.onATime = e => { this.setState({ aTime: e.target.value }); clearTimeout(this._at); this._at = setTimeout(() => this.after(() => this.state.raceState !== 'racing' && this.prepareRace()), 500); };
+    const nudge = d => () => { const v = core.parseTime(this.state.aTime); if (!isFinite(v)) return; this.setState({ aTime: core.fmtTime(Math.max(5, v + d)) }); this.after(() => this.state.raceState !== 'racing' && this.prepareRace()); };
+    vals.aTimeMinus = nudge(-0.1); vals.aTimePlus = nudge(0.1);
+    vals.aToggles = [
+      chip(s.aNoise, 'Estratégias variadas', () => this.setArena({ aNoise: !s.aNoise }), 'a'),
+      chip(s.aWatch, 'Só assistir', () => this.setArena({ aWatch: !s.aWatch }), 'a'),
+      chip(s.aRecord, 'Recorde', () => this.setArena({ aRecord: !s.aRecord }), 'a'),
+      chip(s.aPool === 25, '25 m', () => this.setArena({ aPool: 25 }), 'a'),
+      chip(s.aPool === 50, '50 m', () => this.setArena({ aPool: 50 }), 'a')
+    ];
+    vals.startRace = () => this.startRace(); vals.startLabel = s.aWatch ? 'Assistir' : s.raceState === 'finished' ? 'Nadar de novo' : 'Largar!';
+    vals.setupDisplay = s.setupOpen ? 'flex' : 'none'; vals.setupBtnDisplay = s.setupOpen ? 'none' : 'block';
+    vals.toggleSetup = () => { this.setState({ setupOpen: !this.state.setupOpen }); this.after(() => { this.drawDock(); this.measureBar(); }); };
+    if (this.arena && this.arena.h && this.arena.race) this.arena.h.top.style.visibility = s.setupOpen && tab === 'arena' ? 'hidden' : 'visible';
+    const CAMS = [['tv', 'TV'], ['aerea', 'Aérea'], ['bloco', 'Bloco'], ['voce', 'Seguindo'], ['livre', 'Livre']]; const SPEEDS = [[0.5, '½×'], [1, '1×'], [2, '2×'], [4, '4×']];
+    vals.cycleCam = () => { const i = CAMS.findIndex(c => c[0] === this.state.cam); const k = CAMS[(i + 1) % CAMS.length][0]; this.arena.setCamera(k); this.setState({ cam: k }); }; vals.camLabel = (CAMS.find(c => c[0] === s.cam) || CAMS[0])[1];
+    vals.cycleSpeed = () => { const i = SPEEDS.findIndex(c => c[0] === this.state.speed); const k = SPEEDS[(i + 1) % SPEEDS.length][0]; this.arena.setSpeed(k); this.setState({ speed: k }); }; vals.speedLabel = (SPEEDS.find(c => c[0] === s.speed) || SPEEDS[1])[1];
+    vals.scrubRef = this.ref('scrub'); vals.scrubLblRef = this.ref('scrubLbl');
+    vals.camChips = [['tv', 'TV'], ['aerea', 'Aérea'], ['bloco', 'Bloco'], ['voce', 'Você'], ['livre', 'Livre']].map(([k, l]) => chip(s.cam === k, l, () => { this.arena.setCamera(k); this.setState({ cam: k }); }, 'a'));
+    vals.speedChips = [[0.5, '½×'], [1, '1×'], [2, '2×'], [4, '4×']].map(([k, l]) => chip(s.speed === k, l, () => { this.arena.setSpeed(k); this.setState({ speed: k }); }, 'a'));
+    vals.replay = () => { const A = this.arena; if (!A || !A.race) return; const rs = this.state.raceState; if (rs === 'ready' || rs === 'idle') return this.startRace(); if (!A.paused) { A.pause(); this.setState({ playing: false }); return; } this._scrubbed = false; if (A.state === 'finished' || A.t >= A.race.Tmax) A.play(); else A.paused = false; this.setState({ playing: true }); };
+    vals.playLabel = s.playing ? '❚❚' : '▶';
+    vals.dockChip = this.chip(s.dockOpen, 'a'); vals.cubeChip = this.chip(s.cubeOn, 'a');
+    vals.toggleDock = () => this.toggleDock();
+    vals.toggleDockMax = () => { const v = !this.state.dockMax; this.setState({ dockMax: v }); this.after(() => { this.syncBoard(); this.drawDock(); }); };
+    vals.dockMaxIcon = s.dockMax ? '▾' : '▴';
+    vals.toggleHud = () => this.toggleHud();
+    vals.toggleSound = () => this.toggleSound(); vals.sndChip = this.chip(s.soundOn, 'a'); vals.sndLabel = s.soundOn ? '♪ Som' : '♪ Mudo';
+    vals.hudDisplay = s.hud ? 'block' : 'none'; vals.hudOffDisplay = s.hud ? 'none' : 'block';
+    this.watchBar();
+    const bb = s.barB || 74;
+    vals.dockDisplay = R2 && s.dockOpen && this.arena && this.arena.race ? 'flex' : 'none';
+    vals.dockLeft = s.setupOpen && s.wide ? 'calc(min(320px, 100% - 28px) + 26px)' : '14px';
+    vals.dockH = s.dockMax ? `calc(100% - ${bb + 14}px)` : (typeof window !== 'undefined' && window.innerHeight < 760 ? '62%' : 'min(46%, 440px)');
+    vals.dockTabs = DOCK_TABS.map(([k, l]) => chip(s.dockTab === k || s.dockTab2 === k, l, () => this.setDockTab(k), 'a'));
+    const split = !!s.dockTab2 && s.wide; vals.dock1Right = split ? 'calc(50% + 4px)' : '8px'; vals.dock2Display = split ? 'block' : 'none';
+    vals.dock2Ref = this.ref('dock2'); vals.d2selRef = this.ref('d2sel'); vals.d2selDisp = s.wide ? 'block' : 'none';
+    vals.dock2Opts = [{ v: '', l: '+ 2º gráfico' }, ...DOCK_TABS.filter(([k]) => k !== 'res' && k !== s.dockTab).map(([k, l]) => ({ v: k, l: '2º: ' + l }))]; vals.dock2Val = s.dockTab2 || '';
+    vals.onDock2 = e => { const v = e.target.value || null; this.setState({ dockTab2: v }); this.after(() => this.drawDock()); };
+    vals.dockChartDisplay = s.dockTab === 'res' ? 'none' : 'block'; vals.dockResDisplay = s.dockTab === 'res' ? 'flex' : 'none';
+    vals.liveDisplay = s.playing && s.dockTab !== 'res' ? 'flex' : 'none';
+    vals.raceTitle = s.raceTitle; vals.resultRows = s.results || [];
+    vals.tmax = s.tmax; vals.scrub = s.scrub; vals.scrubLabel = core.fmtTime(s.scrub) + 's';
+    vals.onScrub = e => this.seekArena(+e.target.value);
+    vals.toggleCube = () => { const on = !this.state.cubeOn; this.arena.setCube(on); this.setState(on ? { cubeOn: on, setupOpen: false } : { cubeOn: on }); };
+    vals.timelineDisplay = s.raceState !== 'idle' ? 'flex' : 'none';
+    vals.liveRef = this.ref('live'); vals.liveCardDisplay = s.liveOn && !s.setupOpen && s.raceState !== 'idle' && !s.cubeOn ? 'flex' : 'none';
+    vals.liveChip = this.chip(s.liveOn, 'a'); vals.toggleLive = () => { this.setState({ liveOn: !this.state.liveOn }); this.after(() => this.updateLive(this.arena ? this.arena.t : 0)); };
+    const fItem = (v, l, c) => { const on = v === (s.follow == null ? '' : String(s.follow)); return { v, l, c, bg: on ? 'rgba(47,224,240,.16)' : 'none', fg: on ? '#2FE0F0' : '#eaf6ff', on: () => { this.setState({ fOpen: false }); this.setFollow(v === '' ? null : +v); } }; };
+    vals.followOpts = [fItem('', 'Ninguém (câmera livre)', 'transparent'), ...s.fList.map(f => fItem(f.v, f.l, f.c || '#8db3cf'))];
+    const fCur = s.follow != null ? s.fList.find(f => f.v === String(s.follow)) : null;
+    vals.followLabel = fCur ? '◉ ' + fCur.l : 'Seguir…'; vals.fBtnBg = fCur ? 'rgba(47,224,240,.16)' : '#071a2e'; vals.fBtnBd = fCur ? '#2FE0F0' : 'rgba(255,210,63,.45)'; vals.fBtnFg = fCur ? '#eaf6ff' : '#FFD23F';
+    vals.toggleFList = () => this.setState({ fOpen: !this.state.fOpen }); vals.fListDisp = s.fOpen ? 'flex' : 'none';
+    const layChips = [['t', 'Tempos'], ['s', 'Braçadas'], ['dir', 'Ida/volta']].map(([k, l]) => chip(s.lay[k], l, () => { this.setState({ lay: { ...this.state.lay, [k]: !this.state.lay[k] } }); this.after(() => { this.drawDock(); this.drawRaio(); }); }, 'a'));
+    const evD = this.arena && this.arena.race ? this.arena.race.dist : 50; const evR = core.EVENTS[s.rCode] ? core.EVENTS[s.rCode].dist : 50;
+    const unitChips = D => [25, 50, 100].filter(u => u < D).map(u => chip((s.pUnit || (D <= 100 ? 25 : D <= 200 ? 50 : 100)) === u, u + ' m', () => { this.setState({ pUnit: u }); this.after(() => { this.drawDock(); this.drawRaio(); }); }, 'a'));
+    vals.dockLayers = s.dockTab === 'passagens' || s.dockTab2 === 'passagens' ? [...unitChips(evD), ...layChips] : []; vals.dockLayDisp = vals.dockLayers.length ? 'flex' : 'none'; vals.rLayers = (s.rA === 'passagens' || (s.wide && s.rB === 'passagens')) && s.rMode === 'final' ? [...unitChips(evR), ...layChips] : []; vals.rLayDisp = vals.rLayers.length ? 'flex' : 'none';
+    const A = av; const setA = p => this.setAvatar(p);
+    vals.poseChips = [['stand', 'Parado'], ['warmup', 'Aquecendo'], ['ready', 'Na marca'], ['free', 'Nadando'], ['celebrate', 'Comemorando']].map(([k, l]) => chip(s.vPose === k, l, () => { this.viewer && this.viewer.setPose(k); this.setState({ vPose: k }); }));
+    vals.onAvName = e => setA({ name: e.target.value }); vals.onAvSigla = e => setA({ sigla: e.target.value.toUpperCase(), capText: e.target.value.toUpperCase() || 'RAIA' });
+    vals.avatarTeam = A.team || ''; vals.onAvTeam = e => setA({ team: e.target.value });
+    vals.teamOptions = [{ v: '', l: 'Independente (sem equipe)' }, ...core.ALL_TEAMS.map(t => ({ v: t, l: core.TEAM_NAMES[t] ? `${t} — ${core.TEAM_NAMES[t]}` : t }))];
+    vals.avSexChips = [['M', 'Masc'], ['F', 'Fem']].map(([k, l]) => chip(A.sex === k, l, () => { setA({ sex: k }); this.setState({ aSex: k, cSex: k, oSex: k }); }));
+    const sw = (list, key, round) => list.map(c => ({ c, on: () => setA({ [key]: c }), bd: A[key] === c ? '#FFD23F' : 'rgba(141,179,207,.25)' }));
+    vals.skinSw = sw(swm.SKINS, 'skin');
+    vals.genderChips = [['homem', 'Homem'], ['mulher', 'Mulher'], ['nb', 'Não-binário']].map(([k, l]) => chip((A.gender || (A.sex === 'F' ? 'mulher' : 'homem')) === k, l, () => setA(k === 'nb' ? { gender: k } : { gender: k, frame: k === 'mulher' ? 'F' : 'M' }), 'a'));
+    vals.frameChips = [['M', 'Masculina'], ['F', 'Feminina']].map(([k, l]) => chip((A.frame || A.sex) === k, l, () => setA({ frame: k })));
+    vals.bodyChips = swm.BODY_TYPES.map(o => chip((A.bodyType || 'atletico') === o.id, o.label, () => setA({ bodyType: o.id })));
+    vals.hairChips = swm.HAIRS.map(o => chip((A.hair || 'curto') === o.id, o.label, () => setA({ hair: o.id }), 'a'));
+    vals.hairSw = swm.HAIR_COLORS.map(c => ({ c, on: () => setA({ hairColor: c }), bd: A.hairColor === c ? '#FFD23F' : 'rgba(141,179,207,.25)' }));
+    vals.facialChips = swm.FACIAL.map(o => chip((A.facial || 'none') === o.id, o.label, () => setA({ facial: o.id }), 'a'));
+    vals.faceChips = swm.FACES.map(o => chip((A.face || 'sorriso') === o.id, o.label, () => setA({ face: o.id }), 'a'));
+    vals.noseChips = swm.NOSES.map(o => chip((A.nose || 'medio') === o.id, o.label, () => setA({ nose: o.id }), 'a'));
+    vals.markChips = swm.MARKS.map(o => chip((A.mark || 'none') === o.id, o.label, () => setA({ mark: o.id }), 'a'));
+    vals.avHeight = A.height; vals.avHeightLabel = Math.round(178 * A.height * (A.sex === 'F' ? 0.95 : 1)) + 'cm'; vals.onAvHeight = e => setA({ height: +e.target.value });
+    vals.avBuild = A.build; vals.avBuildLabel = (A.build < 0.96 ? 'leve' : A.build > 1.06 ? 'largo' : 'padrão'); vals.onAvBuild = e => setA({ build: +e.target.value });
+    vals.suitChips = swm.SUITS.map(o => chip(A.suit === o.id, o.label, () => setA({ suit: o.id })));
+    vals.patternChips = swm.PATTERNS.map(o => chip(A.pattern === o.id, o.label, () => setA({ pattern: o.id }), 'a'));
+    vals.suitSw1 = sw(SW_COLORS, 'suitColor'); vals.suitSw2 = sw(SW_COLORS, 'suitColor2');
+    vals.capChips = swm.CAPS.map(o => chip(A.cap === o.id, o.label, () => setA({ cap: o.id })));
+    vals.capSw1 = sw(SW_COLORS, 'capColor'); vals.capSw2 = sw(SW_COLORS, 'capColor2');
+    vals.goggleChips = Object.entries(swm.GOGGLES).map(([k, g]) => ({ ...chip(A.goggles === k, g.label, () => setA({ goggles: k }), 'a'), dot: g.irid ? 'linear-gradient(90deg,#ff5468,#ffd23f,#2fe0f0,#7a5cff)' : g.color }));
+    vals.hatChips = swm.HATS.map(o => chip(A.hat === o.id, o.label, () => setA({ hat: o.id })));
+    vals.hatSw = sw(SW_COLORS, 'hatColor');
+    vals.accChips = [['headphones', 'Fones'], ['towel', 'Toalha no pescoço'], ['watch', 'Relógio']].map(([k, l]) => chip(!!A[k], l, () => setA({ [k]: !A[k] }), 'a'));
+    vals.medalChips = [['none', 'Nenhuma'], ['ouro', 'Ouro'], ['prata', 'Prata'], ['bronze', 'Bronze']].map(([k, l]) => chip(A.medal === k, l, () => setA({ medal: k }), 'a'));
+    vals.celeChips = swm.CELEBRATIONS.map(o => chip(A.celebration === o.id, o.label, () => { setA({ celebration: o.id }); this.viewer && this.viewer.setPose('celebrate'); this.setState({ vPose: 'celebrate' }); }, 'a'));
+    vals.saveAvatarGo = () => { this.persistAvatar(); this.goWith('arena', { aSex: A.sex, setupOpen: true }, () => this.setArena({ aSex: A.sex })); };
+    vals.randomAvatar = () => { const pick = l => l[Math.floor(Math.random() * l.length)]; const sex = A.sex; setA({ face: pick(swm.FACES).id, nose: pick(swm.NOSES).id, mark: pick(swm.MARKS).id, bodyType: pick(swm.BODY_TYPES).id, hair: pick(swm.HAIRS).id, hairColor: pick(swm.HAIR_COLORS), facial: (A.frame || sex) === 'F' ? 'none' : pick(swm.FACIAL).id, skin: pick(swm.SKINS), suit: pick(sex === 'F' ? ['maio', 'macaquinho'] : ['sunga', 'jammer', 'bermuda']), pattern: pick(swm.PATTERNS).id, suitColor: pick(SW_COLORS), suitColor2: pick(SW_COLORS), cap: pick(swm.CAPS).id, capColor: pick(SW_COLORS), capColor2: pick(SW_COLORS), goggles: pick(Object.keys(swm.GOGGLES)), hat: pick(swm.HATS).id, hatColor: pick(SW_COLORS), headphones: Math.random() < 0.4, towel: Math.random() < 0.35, watch: Math.random() < 0.4, celebration: pick(swm.CELEBRATIONS).id, height: +(0.94 + Math.random() * 0.12).toFixed(2), build: +(0.9 + Math.random() * 0.22).toFixed(2) }); };
+    vals.resetAvatar = () => setA({ ...swm.DEFAULT_AVATAR, name: A.name, sigla: A.sigla, team: A.team, sex: A.sex, suit: A.sex === 'F' ? 'maio' : 'jammer' });
+    vals.vCats = VCATS.map(([k, l]) => ({ label: l, on: () => this.setState({ vCat: k }), color: s.vCat === k ? '#eaf6ff' : '#8db3cf', line: s.vCat === k ? '#FFD23F' : 'transparent' }));
+    vals.vc = Object.fromEntries(VCATS.map(([k]) => [k, s.vCat === k ? 'flex' : 'none']));
+    vals.vestCols = s.wide ? 'minmax(0,1.25fr) minmax(340px,1fr)' : '1fr'; vals.vestRows = s.wide ? '1fr' : 'minmax(280px,46%) minmax(0,1fr)';
+    vals.cCompChips = ['InterUSP', 'TUSCA'].map(c => chip(s.cComp === c, c, () => this.setCalc({ cComp: c })));
+    vals.cSexChips = [['M', 'Masc'], ['F', 'Fem']].map(([k, l]) => chip(s.cSex === k, l, () => this.setCalc({ cSex: k })));
+    const evC = this.evAvail(s.cComp, s.cSex, false);
+    vals.cEventChips = core.EVENT_ORDER.map(c => ({ ...chip(s.cCode === c, EV_SHORT[c], () => this.setCalc({ cCode: c })), title: E[c].label, op: evC.includes(c) ? 1 : 0.5 }));
+    vals.calcCols = s.wide ? 'minmax(250px,290px) minmax(0,1fr)' : '1fr'; vals.calcInner = s.wide ? 'minmax(0,1.9fr) minmax(0,1fr)' : '1fr'; vals.calcRows = s.wide ? 'auto minmax(0,1.25fr) minmax(0,1fr)' : 'auto 300px 300px'; vals.calcOverflow = s.wide ? 'hidden' : 'auto'; vals.calcH = s.wide ? '100%' : 'auto';
+    const ysC = this.yearsAvail(s.cComp, s.cCode, s.cSex, false);
+    vals.cYearChips = ysC.map(y => chip(s.cYears.includes(y), String(y), () => { const on = s.cYears.includes(y); const next = on ? s.cYears.filter(v => v !== y) : [...s.cYears, y].sort(); if (!next.length) return; this.setCalc({ cYears: next }); }, 'a'));
+    vals.cModeChips = [['media', 'Média dos anos'], ['todos', 'Todos juntos']].map(([k, l]) => ({ ...chip(s.cMode === k, l, () => { this.setState({ cMode: k }); this.after(() => this.runCalc()); }), title: k === 'media' ? 'Chance em cada edição, depois a média' : 'Todas as edições num único campo histórico (bootstrap)' }));
+    vals.cModeHint = s.cMode === 'media' ? 'Calcula a chance em cada final escolhida e tira a média (cada edição pesa igual).' : 'Junta os tempos de todas as edições num único "campo histórico" e sorteia finais a partir dele (bootstrap).';
+    vals.cTime = s.cTime; vals.onCTime = e => this.setCalc({ cTime: e.target.value }, 350);
+    vals.cSigma = s.cSigma; vals.cSigmaLabel = '±' + s.cSigma.toFixed(1).replace('.', ',') + '%'; vals.onCSigma = e => this.setCalc({ cSigma: +e.target.value }, 200);
+    const C = s.calc || {};
+    vals.cSigmaHint = C.sigmaF ? `Seu tempo varia ±${s.cSigma.toFixed(1).replace('.', ',')}% de prova para prova. A variação dos adversários (±${(C.sigmaF * 100).toFixed(1).replace('.', ',')}%) foi estimada dos dados: ${C.n} pares de atletas que repetiram a mesma prova em anos seguidos.` : 'Quanto seu tempo costuma variar de prova para prova.';
+    vals.testInPool = () => { const p = { aComp: s.cComp, aSex: s.cSex, aCode: s.cCode, aMode: 'final', aYear: s.cYears[s.cYears.length - 1] }; const fixed = this.fixArena(p); this.goWith('arena', { ...p, ...fixed, aTime: s.cTime, setupOpen: true }, () => this.prepareRace()); };
+    vals.calcEmpty = !!C.empty; vals.calcEmptyMsg = C.msg || '';
+    vals.kpis = C.kpis || []; vals.targets = C.targets || []; vals.yearRows = C.yearRows || [];
+    vals.posNote = s.cMode === 'todos' ? `Finais sorteadas do campo histórico (${C.mField || '—'} adversários oficiais por final).` : 'Média das probabilidades de cada edição selecionada. Linha vermelha = último lugar que pontua.';
+    vals.oCompChips = ['InterUSP', 'TUSCA'].map(c => chip(s.oComps.includes(c), c, () => this.setObs({ oComps: s.oComps.includes(c) ? s.oComps.filter(v => v !== c) : [...s.oComps, c] }), 'a'));
+    vals.oYearChips = [2023, 2024, 2025, 2026].map(y => chip(s.oYears.includes(y), String(y), () => this.setObs({ oYears: s.oYears.includes(y) ? s.oYears.filter(v => v !== y) : [...s.oYears, y].sort() }), 'a'));
+    vals.oSexChips = [['M', 'Masc'], ['F', 'Fem'], ['A', 'Ambos']].map(([k, l]) => chip(s.oSex === k, l, () => this.setObs({ oSex: k }), 'a'));
+    vals.oColorChips = [['auto', 'Auto'], ['team', 'Equipe'], ['comp', 'Competição'], ['stroke', 'Estilo']].map(([k, l]) => chip(s.oColor === k, l, () => { this.setState({ oColor: k }); this.obsApi && this.obsApi.setOption('colorBy', k); }, 'a'));
+    vals.oEventChips = core.EVENT_ORDER.map(c => chip(s.oEvents.includes(c), E[c].short, () => this.setObs({ oEvents: s.oEvents.includes(c) ? s.oEvents.filter(v => v !== c) : core.EVENT_ORDER.filter(v => v === c || s.oEvents.includes(v)) }), 'a'));
+    const tList = [...new Set(s.oComps.flatMap(c => db.teams[c] || []))].sort();
+    vals.oTeamChips = tList.map(t => ({ ...chip(s.oTeams.includes(t), t, () => this.setObs({ oTeams: s.oTeams.includes(t) ? s.oTeams.filter(v => v !== t) : [...s.oTeams, t] }), 'a'), dot: core.teamColor(t, s.oComps.length === 1 ? s.oComps[0] : null) }));
+    const cnt = s.counts; vals.obsCountsLabel = cnt ? `${cnt.results.toLocaleString('pt-BR')} resultados · ${cnt.athletes} atletas` : '';
+    const si = s.selInfo; vals.selBarDisplay = si ? 'flex' : 'none';
+    vals.selLabel = si ? `Seleção: ${si.n} · ${si.athletes} atletas · IT ${isFinite(si.itMed) ? Math.round(si.itMed) : '—'}` : '';
+    vals.clearSel = () => { this.obsApi && this.obsApi.clearSelection(); this.setState({ selInfo: null }); };
+    vals.pcaChips = [
+      chip(s.pcaMode === 'zoom', 'Mover / zoom', () => { this.setState({ pcaMode: 'zoom' }); this.obsApi && this.obsApi.setOption('pcaMode', 'zoom'); }, 'a'),
+      chip(s.pcaMode === 'lasso', 'Laço', () => { this.setState({ pcaMode: 'lasso' }); this.obsApi && this.obsApi.setOption('pcaMode', 'lasso'); }, 'a'),
+      chip(false, `k = ${s.pcaK}`, () => { const k = s.pcaK >= 6 ? 2 : s.pcaK + 1; this.setState({ pcaK: k }); this.obsApi && this.obsApi.setOption('k', k); }, 'a'),
+      chip(s.pcaColor === 'cluster', 'Cor por grupo', () => { const v = s.pcaColor === 'cluster' ? 'auto' : 'cluster'; this.setState({ pcaColor: v, oColor: v === 'cluster' ? s.oColor : s.oColor }); if (this.obsApi) { this.obsApi.state.colorBy = v === 'cluster' ? 'cluster' : s.oColor; this.obsApi.redraw(); } }, 'a'),
+      chip(false, 'Reset', () => this.obsApi && this.obsApi.resetZoom(), 'a')
+    ];
+    vals.orderChips = [['total', 'Por total'], ['cluster', 'Por similaridade']].map(([k, l]) => chip(s.order === k, l, () => { this.setState({ order: k }); this.obsApi && this.obsApi.setOption('order', k); }, 'a'));
+    const vA = s.oA, vB = s.wide && R2 ? s.oB : null;
+    vals.ov = Object.fromEntries(['swarm', 'ridge', 'bump', 'matrix', 'pca', 'pc', 'chord', 'lorenz'].map(k => [k, { col: k === vA ? 1 : 2, disp: k === vA || k === vB ? 'block' : 'none' }]));
+    vals.oPickA = OBS_VIEWS.map(([k, l, t]) => ({ ...chip(vA === k, l, () => this.setObsView('A', k)), title: t }));
+    vals.oPickB = OBS_VIEWS.map(([k, l, t]) => ({ ...chip(s.oB === k, l, () => this.setObsView('B', k)), title: t }));
+    const tools = v => v === 'pca' ? vals.pcaChips : v === 'matrix' ? vals.orderChips : [];
+    vals.oToolsA = tools(vA); vals.oToolsB = tools(s.oB);
+    vals.obsCols = s.wide && R2 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)'; vals.obsBDisp = s.wide && R2 ? 'flex' : 'none';
+    const a = s.drawer != null ? db.athletes[s.drawer] : null;
+    if (a) {
+      const comp0 = a.comps.length === 1 ? a.comps[0] : null; const bests = Object.values(a.best).sort((p, q) => core.EVENT_ORDER.indexOf(p.code) - core.EVENT_ORDER.indexOf(q.code));
+      const top = bests.reduce((m, r) => (!m || r.it > m.it) ? r : m, null);
+      vals.dr = {
+        name: a.name, team: core.TEAM_NAMES[a.team] ? `${a.team} — ${core.TEAM_NAMES[a.team]}` : a.team, color: core.teamColor(a.team, comp0), meta: `${a.comps.join(' + ')} · ${a.years.join(', ')} · ${a.sex === 'F' ? 'feminino' : 'masculino'}`,
+        kpis: [{ v: a.medals.g, l: 'ouros', c: '#E8B931' }, { v: a.medals.s, l: 'pratas', c: '#C9D2DA' }, { v: a.medals.b, l: 'bronzes', c: '#C07A43' }, { v: a.pts, l: 'pontos', c: '#eaf6ff' }],
+        bests: bests.map(r => ({ ev: E[r.code].label, t: core.fmtTime(r.time), w: r.comp + ' ' + r.year, c: core.STROKE_COLORS[r.stroke], watch: () => { const p = { aComp: r.comp, aSex: a.sex, aCode: r.code, aMode: 'final', aYear: r.year, aWatch: true }; const fixed = this.fixArena(p); this.goWith('arena', { ...p, ...fixed, aYear: r.year, setupOpen: false, drawer: null }, () => { this.prepareRace(); setTimeout(() => this.startRace(), 120); }); } })),
+        cta: top ? `Desafiar nos ${E[top.code].label} →` : 'Desafiar'
+      };
+       vals.challenge = () => { if (!top) return; const p = { aComp: top.comp, aSex: a.sex, aCode: top.code, aMode: 'final', aYear: top.year, aWatch: false }; const fixed = this.fixArena(p); this.goWith('arena', { ...p, ...fixed, setupOpen: true, drawer: null }, () => this.prepareRace()); };
+    } else { vals.dr = { name: '', team: '', color: '#eaf6ff', meta: '', kpis: [], bests: [], cta: '' }; vals.challenge = () => { }; }
+    vals.closeDrawer = () => this.setState({ drawer: null });
+    const sig = db.sigma;
+    vals.metPdfCount = 108;
+    vals.metStats = [{ v: db.events.length, l: 'provas (finais)' }, { v: db.results.length.toLocaleString('pt-BR'), l: 'resultados' }, { v: db.athletes.length, l: 'atletas únicos' }, { v: nTeams, l: 'equipes' }, { v: db.athletes.filter(x => x.comps.length > 1).length, l: 'atletas nas 2 competições' }, { v: `${db.meta.validation.geral_match}/${db.meta.validation.geral_total}`, l: 'totais conferidos c/ súmula' }];
+    vals.metSteps = [
+      { n: '01', t: 'Extração', s: 'CSV + 108 súmulas PDF', d: 'Planilha do InterUSP 2023–2025 e súmulas do TUSCA 2023–2026 e InterUSP 2026 lidas linha a linha.' },
+      { n: '02', t: 'Codificação', s: 'acentos recuperados', d: 'PDFs em Windows-1252 lidos como MacRoman ("JO√O") corrigidos por mapa de substituição.' },
+      { n: '03', t: 'Privacidade', s: 'CPFs removidos', d: 'As súmulas do TUSCA 2026 traziam CPF; todos foram removidos antes da análise.' },
+      { n: '04', t: 'Normalização', s: 'equipes · tempos · categorias', d: 'MED.PINHEIROS = MED PINHEIROS, AAARL = MED RIBEIRÃO; "1.02.45" → 62,45 s; Oficial/Extra.' },
+      { n: '05', t: 'Entidades', s: `${db.athletes.length} atletas ligados`, d: 'Primeiro + último nome, equipe e distância de edição ≤ 1 entre anos e competições.' },
+      { n: '06', t: 'Variáveis', s: 'IT · fases · braçadas', d: 'Índice Técnico = 1000·(melhor marca ÷ tempo)³. Reação, submerso, nado, viradas e braçadas estimados pelo modelo calibrado com a elite.' }
+    ];
+    const medIT = (c, y) => core.median(db.results.filter(r => r.comp === c && r.year === y && !r.relay && r.status === 'OK').map(r => r.it));
+    const tr = c => `${Math.round(medIT(c, 2023))} → ${Math.round(medIT(c, 2026))}`;
+    const itI = core.median(db.results.filter(r => r.comp === 'InterUSP' && !r.relay && r.status === 'OK').map(r => r.it)), itT = core.median(db.results.filter(r => r.comp === 'TUSCA' && !r.relay && r.status === 'OK').map(r => r.it));
+    if (tab === 'metodo' && this.M.bio && !this._lossAns) {
+      try { const rows = this.panRows().filter(r => !r.code.startsWith('4x')); const tot = rows.reduce((a, r) => { const L = r.sum; a.s += Math.max(0, L.lossStart); a.t += Math.max(0, L.lossTurns); a.c += Math.max(0, L.lossClean); a.f += Math.max(0, L.lossFinish); return a; }, { s: 0, t: 0, c: 0, f: 0 }); const all = tot.s + tot.t + tot.c + tot.f || 1; this._lossAns = `nado ${Math.round(100 * tot.c / all)}% · saída ${Math.round(100 * tot.s / all)}% · viradas ${Math.round(100 * tot.t / all)}%`; } catch (e) { this._lossAns = '—'; }
+    }
+    vals.metQs = [
+      { n: 'Q1', t: 'O nível está subindo?', a: `IT mediano · InterUSP ${tr('InterUSP')} · TUSCA ${tr('TUSCA')}`, v: 'Nível', go: () => { this.setState({ oA: 'ridge', oB: this.state.oB === 'ridge' ? 'swarm' : this.state.oB }); this.go('obs'); } },
+      { n: 'Q2', t: 'InterUSP e TUSCA têm o mesmo nível?', a: `IT mediano ${Math.round(itI)} × ${Math.round(itT)}`, v: 'Enxame', go: () => { this.setState({ oA: 'swarm', oB: this.state.oB === 'swarm' ? 'ridge' : this.state.oB }); this.go('obs'); } },
+      { n: 'Q3', t: 'Quem domina cada prova?', a: 'blocos de especialização + ranking', v: 'Matriz', go: () => { this.setState({ oA: 'matrix', oB: 'bump' }); this.go('obs'); } },
+      { n: 'Q4', t: 'Existem perfis de atletas?', a: `k-means em ${s.pcaK} grupos sobre a PCA`, v: 'Perfis', go: () => { this.setState({ oA: 'pca', oB: 'pc' }); this.go('obs'); } },
+      { n: 'Q5', t: 'Os pontos dependem de poucos?', a: 'Lorenz / Gini por equipe', v: 'Concentração', go: () => { this.setState({ oA: 'lorenz', oB: 'bump' }); this.go('obs'); } },
+      { n: 'Q6', t: 'Onde se perde tempo para a elite?', a: this._lossAns || 'calculando…', v: 'Raio-X', go: () => { this.setState({ rMode: 'todas', rMetric: 'start15' }); this.go('raiox'); } }
+    ].filter(q => R2 || (q.n !== 'Q4' && q.n !== 'Q5'));
+    vals.metBlocks = [
+      { t: 'Modelos', c: '#FFD23F', items: [...(R2 ? [`Calculadora: Monte Carlo com 2.500 finais; σ = ${(sig.sigma * 100).toFixed(1).replace('.', ',')}% estimado em ${sig.n} pares de anos seguidos.`] : []), 'Fases: o tempo final é repartido em reação, voo, submerso, nado e viradas; o nível (tempo PRO ÷ tempo) escala breakout, velocidades e frequência.'] },
+      { t: 'Interações', c: '#2FE0F0', items: [R2 ? 'Filtros globais, seleção ligada entre visões, zoom semântico, tempo coordenado entre a piscina 3D e os gráficos.' : 'Filtros por competição, ano, sexo, prova e equipe, detalhes sob demanda (tooltips e ficha do atleta), busca por atleta e câmeras da piscina 3D.'] },
+      { t: 'Limites', c: '#FF5468', items: ['Súmulas sem parciais nem tamanho de piscina: fases e braçadas são estimativas.', `Totais por equipe conferem com ${db.meta.validation.geral_match} de ${db.meta.validation.geral_total} linhas das súmulas.`] }
+    ];
+    if (this.M.bio) {
+      const B = this.M.bio; const f1 = v => v.toFixed(1).replace('.', ','); const f2 = v => v.toFixed(2).replace('.', ',');
+      vals.proHead = ['', 'Reação', 'BO saída', 'BO vir.', 'SR'];
+      vals.proCells = ['L', 'C', 'B', 'P'].flatMap(k => { const p = B.PRO[k]; return [{ v: { L: 'Livre', C: 'Costas', B: 'Borb.', P: 'Peito' }[k], c: '#eaf6ff', w: 700 }, { v: f2(p.rt[0]) + '\n' + f2(p.rt[1]), c: '#cfe3f2', w: 500 }, { v: f1(p.boS[0]) + '\n' + f1(p.boS[1]), c: '#2FE0F0', w: 500 }, { v: f1(p.boT[0]) + '\n' + f1(p.boT[1]), c: '#2FE0F0', w: 500 }, { v: B.PRO_SR.M[k][50] + '\n' + B.PRO_SR.F[k][50], c: '#cfe3f2', w: 500 }]; });
+     } else { vals.proHead = []; vals.proCells = []; }
+    vals.q = s.q; vals.onQ = e => this.setState({ q: e.target.value });
+    const norm = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const qt = norm(s.q).trim().split(/\s+/).filter(Boolean);
+    if (qt.length && qt.join('').length >= 2) {
+      vals.qHits = db.athletes.filter(a => { const n = norm(a.name + ' ' + a.team); return qt.every(w => n.includes(w)); }).sort((p, q) => q.pts - p.pts).slice(0, 8)
+        .map(a => ({ name: a.name, meta: a.team + ' · ' + a.years.join(', ').replace(/20/g, "'"), c: core.teamColor(a.team, a.comps[0]), on: () => { this.setState({ q: '' }); this.goWith('obs', { drawer: a.id }, () => this.openDrawer(a.id)); } }));
+      if (!vals.qHits.length) vals.qHits = [{ name: 'Nenhum atleta encontrado', meta: '', c: '#56708a', on: () => this.setState({ q: '' }) }];
+    } else vals.qHits = [];
+    vals.qDisplay = vals.qHits.length ? 'flex' : 'none';
+    const fin = s.rMode === 'final';
+    vals.rModeChips = [['final', 'Uma final'], ['todas', 'Todas as provas']].map(([k, l]) => chip(s.rMode === k, l, () => { this.stopRaio(); this.setState({ rMode: k, rPlaying: false }); this.after(() => this.drawRaio()); }));
+    vals.rFinalCtl = fin ? 'flex' : 'none'; vals.rAllCtl = fin ? 'none' : 'flex'; vals.rFinalFlex = fin ? 'flex' : 'none'; vals.rFinalGrid = fin ? 'grid' : 'none'; vals.rAllDisp = fin ? 'none' : 'block';
+    vals.rCompChips = fin ? ['InterUSP', 'TUSCA'].map(c => chip(s.rComp === c, c, () => this.setRaio({ rComp: c }))) : [['both', 'Ambas'], ['InterUSP', 'InterUSP'], ['TUSCA', 'TUSCA']].map(([k, l]) => chip(s.rAllComp === k, l, () => { this.setState({ rAllComp: k }); this.after(() => this.drawRaio()); }));
+    vals.rYearChips = this.yearsAvail(s.rComp, s.rCode, s.rSex).map(y => chip(s.rYear === y, String(y), () => this.setRaio({ rYear: y }), 'a'));
+    vals.rSexChips = [['M', 'Masc'], ['F', 'Fem']].map(([k, l]) => chip(s.rSex === k, l, () => this.setRaio({ rSex: k })));
+    vals.rPoolChips = [[25, '25 m'], [50, '50 m']].map(([k, l]) => chip(s.rPool === k, l, () => this.setRaio({ rPool: k }), 'a'));
+    vals.rEventChips = core.EVENT_ORDER.map(c => { const av = db.events.some(e => e.comp === s.rComp && e.sex === s.rSex && e.code === c); return { ...chip(s.rCode === c, EV_SHORT[c], () => this.setRaio({ rCode: c })), title: E[c].label + (av ? '' : ' · ' + this.compsFor(c, s.rSex).join('/')), op: av ? 1 : 0.5 }; });
+    vals.rViewChips = [['panorama', 'Panorama por prova'], ['corr', 'Correlações']].map(([k, l]) => chip(s.rAllView === k, l, () => { this.setState({ rAllView: k }); this.after(() => this.drawRaio()); }));
+    if (s.rAllView === 'corr') vals.rViewChips.push(chip(s.rPartial, 'Remover efeito do nível', () => { this.setState({ rPartial: !this.state.rPartial }); this.after(() => this.drawRaio()); }, 'a'));
+    vals.rMetricChips = s.rAllView === 'corr' ? [] : (this.M.bio ? this.M.bio.METRICS : []).map(m => chip(s.rMetric === m.k, m.label, () => { this.setState({ rMetric: m.k }); this.after(() => this.drawRaio()); }, 'a'));
+    vals.rTime = s.rTime; vals.onRTime = e => { this.setState({ rTime: e.target.value }); clearTimeout(this._rt); this._rt = setTimeout(() => this.after(() => this.drawRaio()), 450); };
+    vals.playRaio = () => this.playRaio(); vals.rPlayLabel = s.rPlaying ? '■ Parar' : '▶ Reproduzir';
+    vals.rCols = s.wide && R2 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)'; vals.rBDisp = s.wide && R2 ? 'flex' : 'none';
+    const pickR = (cur, key) => RAIO_CHARTS.map(([k, l, t]) => ({ ...chip(cur === k, l, () => { const other = key === 'rA' ? 'rB' : 'rA'; const p = { [key]: k }; if (this.state[other] === k) p[other] = cur; this.setState(p); this.after(() => this.drawRaio()); }, 'a'), title: t }));
+    vals.rPickA = pickR(s.rA, 'rA'); vals.rPickB = pickR(s.rB, 'rB');
+    const ctxOk = (s.tecCtx === 'arena' && tab === 'arena') || (s.tecCtx !== 'arena' && tab === 'raiox' && fin);
+     const TI = s.tecOpen && ctxOk ? this.tecInfo() : null; const custom = !!this.myOv(s.rCode);
+    vals.tecBtnDisp = fin ? 'block' : 'none'; vals.tecChip = this.chip(s.tecOpen || custom, 'a');
+    vals.toggleTec = () => { const open = !(this.state.tecOpen && this.state.tecCtx !== 'arena'); this.setState({ tecOpen: open, tecCtx: 'raio', tecWho: 'you' }); this.after(() => this.drawRaio()); };
+    vals.openTecArena = () => { const open = !(this.state.tecOpen && this.state.tecCtx === 'arena'); this.setState({ tecOpen: open, tecCtx: 'arena', tecWho: 'you' }); };
+    vals.tecAChip = this.chip(s.tecOpen && s.tecCtx === 'arena', 'a');
+    const arT = s.tecCtx === 'arena';
+    vals.tecL = arT ? (s.setupOpen && s.wide ? 'calc(min(320px, 100% - 28px) + 26px)' : '14px') : 'auto'; vals.tecR = arT ? 'auto' : '16px'; vals.tecT = arT ? '14px' : (s.rGridTop || 150) + 'px'; vals.tecB = arT ? (s.barB || 74) + 'px' : '14px';
+    vals.tecGoLabel = arT ? 'Aplicar e largar →' : 'Nadar com este perfil →'; vals.tecDisplay = s.tecOpen && TI ? 'flex' : 'none'; vals.tecRef = this.ref('tec');
+    const tecOn = s.tecOpen && !!TI && s.wide && !arT; vals.rPadR = tecOn ? 'calc(min(340px, 100% - 32px) + 28px)' : '16px'; vals.tecTop = (s.rGridTop || 150) + 'px';
+    if (tab === 'raiox') this.after(() => { const g = this.ref('rA').current; const sec = g && g.closest('section'); if (!g || !sec) return; const top = Math.round(g.parentElement.parentElement.getBoundingClientRect().top - sec.getBoundingClientRect().top) + 10; if (top > 40 && Math.abs(top - (this.state.rGridTop || 0)) > 2) this.setState({ rGridTop: top }); });
+    vals.tecReset = () => this.setTecCur({ rt: null, tk: null, boS: null, uwS: null, boT: null, split: null, strokes: null });
+    vals.tecSwim = () => { if (this.state.tecCtx === 'arena') { this.setState({ tecOpen: false }); this.after(() => this.startRace()); return; } const p = { aComp: s.rComp, aSex: s.rSex, aCode: s.rCode, aMode: 'final', aYear: s.rYear, aWatch: false }; const fx = this.fixArena(p); this.goWith('arena', { ...p, ...fx, aYear: s.rYear, aTime: s.rTime, aPool: s.rPool, setupOpen: true }, () => this.prepareRace()); };
+    if (TI) {
+      const { L, ov } = TI; const P = L.plan; const st = P.segs[0]; const f = (v, d) => v.toFixed(d).replace('.', ','); const own = TI.own;
+      const unit = s.tecUnit; const swimD = P.tot.swimDist || 1; const toU = v => unit === 'total' ? v : v * (+unit) / P.dist; const fromU = v => unit === 'total' ? v : v * P.dist / (+unit);
+      const row = (k, label, cur, lim, step, dec, suf, hint, conv) => { const cv = conv ? conv(cur) : cur; const lo = conv ? conv(lim[0]) : lim[0], hi = conv ? conv(lim[1]) : lim[1]; return { label, v: +cv.toFixed(dec + 1), vt: f(cv, dec) + suf, vc: own[k] != null ? '#FFD23F' : '#eaf6ff', min: +lo.toFixed(dec + 1), max: +hi.toFixed(dec + 1), step, lo: f(lo, dec), hi: f(hi, dec), hint: own[k] != null ? 'seu valor' : 'estimado', resetDisp: own[k] != null ? 'block' : 'none', reset: () => this.setTecCur({ [k]: null }), on: e => { const v = +e.target.value; this.setTecCur({ [k]: conv === toU ? fromU(v) : v }); } }; };
+      const rel = !!L.relay; const rows = [row('rt', rel ? 'Reação da 1ª perna (s)' : 'Tempo de reação (s)', P.legs[0].rt, L.rt, 0.01, 2, ' s')];
+      if (rel) rows.push(row('tk', 'Troca nas pernas 2–4 (s)', P.legs[1].rt, L.tk, 0.01, 2, ' s'));
+      rows.push(row('boS', rel ? 'Breakout de cada saída (m)' : 'Breakout da saída (m)', st.bo, L.boS, 0.1, 1, ' m')); if (L.uwS) rows.push(row('uwS', 'Submerso na saída (s)', st.uwTime, L.uwS, 0.01, 2, ' s'));
+      if (L.boT) { const bt = P.tot.boTurnMean || L.boT[0]; rows.push(row('boT', 'Breakout nas viradas (m)', bt, L.boT, 0.1, 1, ' m')); }
+      rows.push(rel ? row('split', 'Parcial da 1ª perna (s)', P.legs[0].t1, L.split, 0.01, 2, ' s') : row('split', 'Passagem aos ' + (P.dist / 2) + ' m (s)', P.tAt(P.dist / 2 - 1e-3), L.split, 0.01, 2, ' s'));
+      rows.push(row('strokes', 'Braçadas ' + (unit === 'total' ? 'na prova' : 'a cada ' + unit + ' m'), P.tot.strokes, L.strokes, unit === 'total' ? 1 : 0.1, unit === 'total' ? 0 : 1, '', '', toU));
+      vals.tecRows = rows;
+      vals.tecUnitChips = [['25', '25 m'], ['50', '50 m'], ['total', 'prova']].filter(([k]) => k === 'total' || +k <= P.dist).map(([k, l]) => chip(unit === k, l, () => this.setState({ tecUnit: k }), 'a'));
+      const im = L.implied; const tagU = im.vUw < 1.2 ? ['lento', '#FF5468'] : im.vUw > 2.4 ? ['nível elite', '#2FE0F0'] : ['ok', '#cfe3f2'];
+      const capR = im.vSwim / im.cap; const tagS = capR > 0.97 ? ['no limite da elite', '#FF5468'] : capR > 0.85 ? ['muito forte', '#FFD23F'] : ['ok', '#cfe3f2'];
+      const tagR = im.SR > 72 ? ['frequência alta', '#FFD23F'] : im.SR < 32 ? ['frequência baixa', '#FFD23F'] : ['ok', '#cfe3f2'];
+      vals.tecReads = [{ l: 'Vel. submersa', v: f(im.vUw, 2) + ' m/s', tag: tagU[0], c: tagU[1] }, { l: 'Vel. de nado', v: f(im.vSwim, 2) + ' m/s', tag: tagS[0], c: tagS[1] }, { l: 'Frequência', v: f(im.SR, 0) + ' cic/min', tag: tagR[0], c: tagR[1] }, { l: 'Dist. por ciclo', v: f(im.DPS, 2) + ' m', tag: 'm por ciclo', c: '#cfe3f2' }];
+      vals.tecSub = E[TI.c.code].short + ' · ' + core.fmtTime(TI.T) + ' · ' + TI.c.pool + ' m';
+      const oppNames = arT ? (this.oppSeeds || []).map(o => o.name) : (this._re || []).filter(e => !e.isPro && !e.isYou).map(e => e.name);
+      const meName = (s.avatar && s.avatar.name) || 'Você';
+      vals.tecWho = [{ ...chip(s.tecWho === 'you', (custom ? '• ' : '') + meName, () => this.setState({ tecWho: 'you' })) }, ...oppNames.map(n => ({ ...chip(s.tecWho === n, (this.oppOv(TI.c.code, n) ? '• ' : '') + (E[TI.c.code].relay ? n : this.shortName(n)), () => this.setState({ tecWho: n }), 'a') }))];
+      vals.tecWarn = TI.fixed ? 'Alguns valores foram ajustados para caber no seu tempo final (ondulação até 15 m, nado no máximo no ritmo da elite).' : ''; vals.tecWarnDisp = TI.fixed ? 'block' : 'none';
+    }
+    const res = fin && tab === 'raiox' ? this.raioData() : null;
+    if (res && res.length > 1) {
+      const sel = this.raioSel(res); const P = sel.plan, Q = res[0].plan; const T = P.tot, U = Q.tot; const nfx = (v, d) => v == null || !isFinite(v) ? '—' : v.toFixed(d).replace('.', ',');
+      vals.rSelName = sel.isPro ? 'PRO' : `${sel.place}º ${sel.name}`; vals.rSelColor = sel.isYou ? core.YOU : sel.isPro ? '#eaf6ff' : sel.color;
+      vals.rKpis = [
+        { l: 'Tempo', v: core.fmtTime(P.T), pro: core.fmtTime(Q.T), c: '#eaf6ff' },
+        { l: 'Reação', v: nfx(P.legs[0].rt, 2), pro: nfx(Q.legs[0].rt, 2) + ' s', c: '#8db3cf' },
+        { l: 'Breakout', v: nfx(T.boStart, 1) + ' m', pro: nfx(U.boStart, 1) + ' m', c: '#2FE0F0' },
+        { l: 'Submerso', v: nfx(T.uw, 1) + ' s', pro: nfx(U.uw, 1) + ' s', c: '#2FE0F0' },
+        { l: 'Nadando', v: nfx(T.swim, 1) + ' s', pro: nfx(U.swim, 1) + ' s', c: '#56B4E9' },
+        { l: 'Viradas', v: T.wall > 0 ? nfx(T.wall, 1) + ' s' : '—', pro: U.wall > 0 ? nfx(U.wall, 1) + ' s' : '—', c: '#FFD23F' },
+        { l: 'Braçadas', v: String(Math.round(T.strokes)), pro: String(Math.round(U.strokes)), c: '#eaf6ff' },
+        { l: 'Ciclos/min', v: nfx(T.SR, 0), pro: nfx(U.SR, 0), c: '#cfe3f2' },
+        { l: 'm/ciclo', v: nfx(T.DPS, 2), pro: nfx(U.DPS, 2), c: '#cfe3f2' }
+      ];
+    } else { vals.rKpis = []; vals.rSelName = ''; vals.rSelColor = '#eaf6ff'; }
+    return vals;
+  }
+}
+</script>
+</body>
+</html>

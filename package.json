@@ -1,0 +1,22 @@
+{
+  "name": "raia",
+  "private": true,
+  "version": "1.0.0",
+  "description": "RAIA — visualização computacional da natação InterUSP/TUSCA",
+  "type": "module",
+  "scripts": {
+    "dev": "cd server && RAIA_WEB=../web RAIA_DB=../.dados-dev/raia.db RAIA_COOKIE_SECURE=0 node src/index.js",
+    "test:api": "cd server && npm test",
+    "test:fumaca": "node tests/fumaca.mjs http://127.0.0.1:8080/ .tmp/capturas/fumaca",
+    "test:conta": "node tests/conta.mjs http://127.0.0.1:8080/",
+    "cpf": "bash scripts/checar-cpf.sh",
+    "vendor": "bash scripts/vendorizar.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "d3": "7.9.0",
+    "esbuild": "0.25.11",
+    "pixelmatch": "7.1.0",
+    "pngjs": "7.0.0"
+  }
+}

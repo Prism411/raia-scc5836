@@ -1,0 +1,286 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{newunicodechar}
+\newunicodechar{√}{\ensuremath{\surd}}
+\newunicodechar{м}{m}\newunicodechar{о}{o}\newunicodechar{а}{a}\newunicodechar{т}{t}
+
+\definecolor{raia}{HTML}{0B3D91}
+\definecolor{ciano}{HTML}{1AA7B5}
+\captionsetup{font=small,labelfont=bf}
+\setlist{itemsep=1pt,topsep=3pt}
+\graphicspath{{figs/}}
+
+\title{\textbf{RAIA}: exploração visual da natação universitária InterUSP e TUSCA (2023--2026)\\[4pt]
+\large Projeto de Visualização Computacional --- 1ª entrega}
+\author{Jáder Louis de Souza Gonçalves \quad Nº USP 17753116\\
+\small SCC5836 --- Visualização Computacional --- ICMC-USP --- 2026/2}
+\date{15 de novembro de 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A RAIA reúne os resultados de natação das duas maiores competições universitárias paulistas, o InterUSP e o TUSCA,
+entre 2023 e 2026, num único conjunto de dados com 142 provas, 1.816 resultados e 504 atletas. O conjunto foi
+construído a partir das súmulas oficiais e é explorado num sistema web com uma piscina 3D e visualizações
+interativas em d3. Esta primeira entrega descreve os dados, o pré-processamento e quatro questões de investigação,
+respondidas com sete técnicas de visualização. O sistema está em \url{https://raia.jaderlouis.com.br}.
+\end{abstract}
+
+\section{Apresentação}
+
+\paragraph{Motivação.} Competições universitárias de natação geram súmulas detalhadas a cada edição, mas elas são
+publicadas como PDFs isolados, uma prova por arquivo. Quem nada, treina ou organiza essas competições não consegue
+responder perguntas simples a partir delas: o nível está subindo? As duas competições são parecidas? Que equipe
+domina cada prova? Onde um nadador perde tempo? Como atleta do TUSCA, eu convivo com essas perguntas e com a
+dificuldade de respondê-las.
+
+\paragraph{Proposta.} A RAIA transforma as súmulas num conjunto único e o explora de duas formas: uma
+\emph{experiência} (o visitante monta um nadador e nada uma final real numa piscina 3D) e uma \emph{análise visual}
+(visões interativas sobre nível técnico, equipes e fases da prova). A experiência atrai o público da competição;
+a análise responde às questões da Seção~\ref{sec:intro}.
+
+\section{Introdução}\label{sec:intro}
+
+\paragraph{Conjunto de dados.} Os resultados vêm das páginas públicas do EBAN Swim, que publica as súmulas oficiais
+do InterUSP~\cite{eban-interusp} e do TUSCA~\cite{eban-tusca}. A Tabela~\ref{tab:dados} resume o conjunto.
+Cada resultado tem colocação, atleta, equipe, tempo, pontos, categoria (oficial ou extra) e situação
+(válido, desclassificado ou não terminou); cada prova tem competição, ano, sexo, distância, estilo, se é
+revezamento ou demonstração, recorde vigente e vencedor.
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{lll}
+\toprule
+Entidade & Quantidade & Variáveis \\
+\midrule
+Provas (finais) & 142 & competição, ano (2023--2026), sexo, distância, estilo, revezamento, recorde \\
+Resultados & 1.816 & colocação, tempo (s), pontos, categoria, situação \\
+Atletas únicos & 504 & nome, sexo, equipe, competições, anos (45 nadaram nas duas) \\
+Equipes & 19 & 9 no InterUSP e 12 no TUSCA (POLI e CAASO nas duas) \\
+\bottomrule
+\end{tabular}
+\caption{O conjunto de dados. Variáveis categóricas (competição, equipe, estilo, sexo), ordinais (ano,
+colocação) e quantitativas (tempo, pontos, Índice Técnico).}
+\label{tab:dados}
+\end{table}
+
+Como tempos de provas diferentes não são comparáveis, uso uma variável derivada, o \textbf{Índice Técnico (IT)}:
+\[
+\mathrm{IT} = 1000 \left(\frac{t_{\text{ref}}}{t}\right)^3,
+\]
+em que $t$ é o tempo do resultado e $t_{\text{ref}}$ é a melhor marca da base para a mesma prova e sexo. A forma
+cúbica segue a pontuação da World Aquatics~\cite{wa-points}, com a melhor marca da base no lugar do recorde mundial:
+o melhor resultado vale 1000 e cada 1\% a mais de tempo custa cerca de 3\% do índice.
+
+\paragraph{Questões.} Uma análise preliminar das súmulas levou a quatro questões:
+\begin{enumerate}[label=\textbf{Q\arabic*},leftmargin=2.2em]
+  \item O nível técnico está subindo ao longo das edições?
+  \item O InterUSP e o TUSCA têm o mesmo nível técnico?
+  \item Que equipes dominam cada prova, e isso muda com o tempo?
+  \item Onde um nadador perde tempo em relação à elite: na saída, nas viradas ou no nado?
+\end{enumerate}
+
+\section{Pré-processamento}
+
+As súmulas foram baixadas das páginas de resultados; os resultados do InterUSP 2023--2025 foram compilados numa
+planilha, e o InterUSP 2026 e o TUSCA 2023--2026 vêm em PDF (108 arquivos). O script \texttt{dados/construir.py}
+(Python) transforma essas fontes no arquivo \texttt{natacao.json} que a interface lê, em sete etapas
+(Figura~\ref{fig:pipeline}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=3mm, box/.style={draw=raia, fill=raia!6, rounded corners=2pt, align=center,
+  font=\footnotesize, minimum height=11mm, text width=19mm}, >={Stealth[length=2mm]}]
+\node[box] (a) {Extração\\\scriptsize CSV + 108 PDF};
+\node[box, right=of a] (b) {Codificação\\\scriptsize acentos, cirílico};
+\node[box, right=of b] (c) {Privacidade\\\scriptsize remove CPF};
+\node[box, right=of c] (d) {Normalização\\\scriptsize equipes, tempos};
+\node[box, right=of d] (e) {Entidades\\\scriptsize 504 atletas};
+\node[box, right=of e] (f) {Variáveis\\\scriptsize vencedor, recorde};
+\node[box, right=of f, fill=ciano!12, draw=ciano] (g) {Validação\\\scriptsize 65/71 totais};
+\foreach \x/\y in {a/b,b/c,c/d,d/e,e/f,f/g} \draw[->, raia] (\x) -- (\y);
+\end{tikzpicture}
+\caption{Pipeline de construção do conjunto de dados (\texttt{dados/construir.py}).}
+\label{fig:pipeline}
+\end{figure}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Extração.} Cada PDF é convertido em texto com \texttt{pdftotext}; expressões regulares reconhecem o
+  título da prova e cada linha de resultado. A equipe é identificada no fim de cada linha a partir de uma lista
+  de grafias conhecidas, o que resolve linhas sem espaçamento regular.
+  \item \textbf{Codificação.} Alguns PDFs trazem acentos quebrados (``JO√O''), caracteres invisíveis e letras
+  cirílicas visualmente idênticas às latinas no meio de nomes, que são corrigidos.
+  \item \textbf{Privacidade.} As súmulas do TUSCA 2026 trazem o CPF dos atletas. Os CPFs são removidos logo após a
+  extração, o script falha se sobrar algum na saída, e os PDFs brutos ficam fora do repositório.
+  \item \textbf{Normalização.} Grafias da mesma equipe são unificadas (MEDICINA PINHEIROS, MED.PINHEIROS e
+  PINHEIROS viram MED PINHEIROS), tempos viram segundos (``1.02.45'' $\to$ 62{,}45) e a categoria (oficial ou
+  extra) é lida da súmula ou inferida dos pontos.
+  \item \textbf{Entidades.} O mesmo atleta é ligado entre edições e competições: mesmo sexo e primeiro nome e,
+  na mesma equipe, último nome a no máximo uma edição de distância (Levenshtein) ou um nome contido no outro.
+  \item \textbf{Variáveis.} Vencedor, número de nadadores, recorde vigente e quebra de recorde por prova; o IT e o
+  modelo de fases da prova (Seção~\ref{sec:analise}) são calculados na interface.
+  \item \textbf{Validação.} A soma dos pontos por equipe confere com a classificação geral das súmulas em 65 de 71
+  linhas; as diferenças vêm de critérios de desempate e de bônus de recorde. Duas súmulas tinham colocações
+  digitadas fora de ordem, refeitas pela ordem dos tempos.
+\end{itemize}
+
+\section{Análise visual}\label{sec:analise}
+
+O sistema é uma página web única (React, d3~\cite{d3} e three.js~\cite{threejs}). Na análise, os filtros por
+competição, ano, sexo, prova e equipe, a cor por equipe, competição ou estilo, as dicas ao passar o mouse e a
+ficha de cada atleta ao clicar seguem o mantra ``visão geral primeiro, zoom e filtro, detalhes sob
+demanda''~\cite{shneiderman}. As cores seguem a paleta de Okabe e Ito~\cite{okabe-ito}, segura para daltonismo, e um
+simulador de daltonismo no topo da página aplica protanopia, deuteranopia, tritanopia ou acromatopsia à página
+inteira. A escolha de cada técnica parte do tipo de dado e da tarefa~\cite{munzner}; a Tabela~\ref{tab:visoes} resume as
+técnicas e a questão que cada uma responde.
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{p{3.3cm}p{4.4cm}p{1.1cm}p{5.6cm}}
+\toprule
+Visão & Técnica & Questão & Por que essa técnica \\
+\midrule
+Nível & \emph{ridgeline} de densidades & Q1 & compara a distribuição inteira do IT entre 8 edições, sem perder a forma \\
+Enxame & \emph{beeswarm} (um ponto por resultado) & Q2 & mostra cada resultado e os \emph{outliers}, sem esconder a dispersão numa média \\
+Ranking & \emph{bump chart} & Q3 & posição ordinal das equipes ao longo dos anos \\
+Equipe $\times$ prova & matriz (mapa de calor) reordenável & Q3 & duas variáveis categóricas e uma quantitativa; a reordenação revela blocos~\cite{behrisch} \\
+Raio-X & barras empilhadas no tempo (fita), linhas e faixas & Q4 & decompõe o tempo da prova em fases \\
+Arena 3D & animação da final em 3D & Q4 & mostra a prova como ela acontece, com placar e telemetria \\
+Ficha do atleta & linha (trajetória) e radar & --- & detalhe sob demanda de um atleta \\
+\bottomrule
+\end{tabular}
+\caption{Técnicas de visualização da 1ª entrega.}
+\label{tab:visoes}
+\end{table}
+
+\paragraph{Q1 e Q2: nível técnico.} O \emph{ridgeline} (Figura~\ref{fig:nivel}) empilha a densidade do IT de cada
+edição, com a mediana tracejada. No InterUSP a mediana caiu de 556 (2023) para 512 (2025) e voltou a 524 (2026);
+no TUSCA caiu de 633 para 506 entre 2023 e 2024 e ficou estável depois (516 e 524). As densidades mostram que
+as duas quedas são diferentes. No InterUSP as finais cresceram (de 194 para 216 resultados) e o meio da
+distribuição desceu, mas a cauda direita subiu: o percentil 90 do IT foi de 802 para 853. No TUSCA a
+distribuição inteira desceu em 2024, inclusive o topo (percentil 90 de 876 para 747), com finais menores, e só
+voltou ao nível de 2023 em 2026 (863). O enxame (Figura~\ref{fig:enxame}) mostra cada resultado por prova e
+competição: a mediana do IT é 529 no InterUSP e 547 no TUSCA, uma diferença pequena diante da dispersão dentro de
+cada competição.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.95\linewidth]{obs-ridge.png}
+\caption{Nível (Q1): densidade do Índice Técnico por edição, InterUSP em azul e TUSCA em amarelo; a linha
+tracejada liga as medianas.}
+\label{fig:nivel}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=.95\linewidth]{obs-swarm.png}
+\caption{Enxame (Q2): cada ponto é um resultado, posicionado pelo IT na linha da sua prova e colorido pela
+competição. Passar o mouse mostra atleta, tempo e colocação; clicar abre a ficha do atleta.}
+\label{fig:enxame}
+\end{figure}
+
+\paragraph{Q3: equipes.} O \emph{bump chart} (Figura~\ref{fig:ranking}) mostra que o InterUSP alterna entre POLI
+(campeã em 2023 e 2026) e MED PINHEIROS (2024 e 2025), sempre com MED RIBEIRÃO em terceiro, enquanto o TUSCA é
+mais disputado: POLI em 2023, UFSCAR em 2024 e 2025 e LAP em 2026, saindo do meio da tabela. A matriz equipe
+$\times$ prova (Figura~\ref{fig:matriz}) mostra a fatia dos pontos de cada prova que cada equipe conquistou;
+ordenada por similaridade, ela revela blocos de especialização: a CAASO soma 35\% dos pontos do 200 m livre e
+38\% do 400 m livre, enquanto a POLI lidera as provas de 50 m, o 100 m medley e o 4$\times$50 m livre, e a
+UFSCAR aparece entre as três primeiras em quase todas as provas sem liderar nenhuma isoladamente.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{obs-bump.png}\caption{Ranking das equipes por edição.}\label{fig:ranking}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{obs-matrix.png}\caption{Fatia dos pontos de cada prova por equipe.}\label{fig:matriz}\end{subfigure}
+\caption{Equipes (Q3).}
+\end{figure}
+
+\paragraph{Q4: fases da prova.} As súmulas não têm parciais, então o Raio-X estima as fases (reação, voo,
+submerso, nado, viradas e chegada) com um modelo calibrado por médias de finalistas de elite, que escala cada
+fase pelo nível do nadador (tempo de referência $\div$ tempo); esses valores aparecem marcados como estimados na
+interface. A fita (Figura~\ref{fig:raiox}a) mostra as fases de cada finalista lado a lado, e o modo ``todas as
+provas'' (Figura~\ref{fig:raiox}b) compara cada métrica entre todas as finais. Somando todas as provas
+individuais, a perda de tempo para a referência de elite fica em 57\% no nado, 16\% na saída e 21\% nas viradas.
+A Arena 3D (Figura~\ref{fig:arena}) anima a final escolhida com o visitante numa das raias, com câmeras de
+transmissão, placar e telemetria ao vivo.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{raiox-fita.png}\caption{Fita de fases de uma final.}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{raiox-todas.png}\caption{Saída até 15 m em todas as provas.}\end{subfigure}
+\caption{Raio-X (Q4).}
+\label{fig:raiox}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{arena.png}\caption{Arena 3D durante a final.}\label{fig:arena}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\includegraphics[width=\linewidth]{ficha-atleta.png}\caption{Ficha do atleta.}\label{fig:ficha}\end{subfigure}
+\caption{A experiência e o detalhe sob demanda.}
+\end{figure}
+
+\section{Discussões preliminares}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Q1.} Não há tendência de alta na mediana: ela cai até 2025 e se recupera em 2026 nas duas
+  competições. No InterUSP, porém, os melhores ficaram mais rápidos enquanto as finais cresceram; no TUSCA, 2024
+  foi uma edição mais fraca em toda a distribuição.
+  \item \textbf{Q2.} O TUSCA tem mediana um pouco maior (547 contra 529), mas as distribuições se sobrepõem
+  quase inteiras; a diferença é menor que a variação entre edições da mesma competição.
+  \item \textbf{Q3.} O InterUSP é um duelo POLI $\times$ MED PINHEIROS; o TUSCA teve três campeões em quatro anos.
+  As equipes se especializam: CAASO no fundo (200 e 400 m), POLI na velocidade (50 m).
+  \item \textbf{Q4.} A maior parte da diferença para a elite está no nado, mas saída e viradas somam mais de um
+  terço, uma parte treinável que a súmula sozinha não mostra.
+\end{itemize}
+
+\paragraph{Limitações.} As fases da prova e as braçadas são estimativas de um modelo, não medições. O IT usa a
+melhor marca da base como referência, então mede o nível relativo a estas competições, não o absoluto. A ligação de
+atletas é heurística e pode juntar homônimos ou separar a mesma pessoa com grafias muito diferentes. As súmulas
+não informam o tamanho da piscina.
+
+\paragraph{Lições.} A maior parte do esforço foi o pré-processamento: cada edição tem um layout de súmula diferente,
+e erros pequenos (uma colocação digitada errado, um CPF colado ao nome da equipe) só aparecem quando os totais
+são conferidos com a classificação geral. Separar a experiência (piscina 3D) da análise (visões em d3) ajudou a
+manter cada visão simples e ligada a uma questão.
+
+\section{Próximos passos}
+
+A segunda etapa vai aprofundar a análise de atletas e equipes com duas novas questões: existem perfis de atletas
+(velocistas, fundistas, especialistas em um estilo)? Os pontos de cada equipe dependem de poucos atletas? Para
+isso, entram novas visualizações coordenadas às atuais e novos mecanismos de interação entre as visões, além de
+uma estimativa das chances de um nadador numa final a partir do seu tempo.
+
+\begin{thebibliography}{9}\small
+\bibitem{eban-interusp} EBAN Swim. Resultados do InterUSP 2023, 2024, 2025 e 2026.
+\url{https://ebanswim.com.br/interusp-2023/} (e páginas de 2024 a 2026). Acesso em nov.~2026.
+\bibitem{eban-tusca} EBAN Swim. Resultados do TUSCA 2023, 2024, 2025 e 2026.
+\url{https://ebanswim.com.br/tusca-2023/}, \url{https://ebanswim.com.br/tusca-2024/},
+\url{https://ebanswim.com.br/tusca-2025-2/}, \url{https://ebanswim.com.br/tusca-central-2026/}. Acesso em nov.~2026.
+\bibitem{wa-points} World Aquatics. \emph{World Aquatics Points}. \url{https://www.worldaquatics.com/swimming/points}.
+\bibitem{d3} M. Bostock, V. Ogievetsky, J. Heer. D$^3$: Data-Driven Documents. \emph{IEEE TVCG}, 17(12):2301--2309, 2011.
+\bibitem{threejs} three.js --- JavaScript 3D library. \url{https://threejs.org}.
+\bibitem{shneiderman} B. Shneiderman. The eyes have it: a task by data type taxonomy for information
+visualizations. \emph{IEEE Symposium on Visual Languages}, p.~336--343, 1996.
+\bibitem{okabe-ito} M. Okabe, K. Ito. \emph{Color Universal Design (CUD): how to make figures and presentations that
+are friendly to colorblind people}. 2008. \url{https://jfly.uni-koeln.de/color/}.
+\bibitem{behrisch} M. Behrisch et al. Matrix reordering methods for table and network visualization.
+\emph{Computer Graphics Forum}, 35(3):693--716, 2016.
+\bibitem{munzner} T. Munzner. \emph{Visualization Analysis and Design}. CRC Press, 2014.
+\end{thebibliography}
+
+\end{document}

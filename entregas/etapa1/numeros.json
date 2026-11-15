@@ -1,0 +1,144 @@
+{
+ "provas": 142,
+ "resultados": 1816,
+ "atletas": 504,
+ "ambas": 45,
+ "equipes": 19,
+ "it": {
+  "InterUSP": {
+   "2023": 556,
+   "2024": 542,
+   "2025": 512,
+   "2026": 524
+  },
+  "TUSCA": {
+   "2023": 633,
+   "2024": 506,
+   "2025": 516,
+   "2026": 524
+  }
+ },
+ "itComp": {
+  "InterUSP": 529,
+  "TUSCA": 547
+ },
+ "campeao": {
+  "InterUSP|2023": [
+   [
+    "POLI",
+    246
+   ],
+   [
+    "MED PINHEIROS",
+    209
+   ],
+   [
+    "MED RIBEIRÃO",
+    98
+   ]
+  ],
+  "InterUSP|2024": [
+   [
+    "MED PINHEIROS",
+    253
+   ],
+   [
+    "POLI",
+    233
+   ],
+   [
+    "MED RIBEIRÃO",
+    99
+   ]
+  ],
+  "InterUSP|2025": [
+   [
+    "MED PINHEIROS",
+    238
+   ],
+   [
+    "POLI",
+    227
+   ],
+   [
+    "MED RIBEIRÃO",
+    129
+   ]
+  ],
+  "InterUSP|2026": [
+   [
+    "POLI",
+    266
+   ],
+   [
+    "MED PINHEIROS",
+    221
+   ],
+   [
+    "MED RIBEIRÃO",
+    115
+   ]
+  ],
+  "TUSCA|2023": [
+   [
+    "POLI",
+    386
+   ],
+   [
+    "CAASO",
+    324
+   ],
+   [
+    "UFSCAR",
+    229
+   ]
+  ],
+  "TUSCA|2024": [
+   [
+    "UFSCAR",
+    271
+   ],
+   [
+    "CAASO",
+    211
+   ],
+   [
+    "LEU",
+    138
+   ]
+  ],
+  "TUSCA|2025": [
+   [
+    "UFSCAR",
+    369
+   ],
+   [
+    "CAASO",
+    271
+   ],
+   [
+    "LEU",
+    236
+   ]
+  ],
+  "TUSCA|2026": [
+   [
+    "LAP",
+    374
+   ],
+   [
+    "UFSCAR",
+    360
+   ],
+   [
+    "CAASO",
+    330
+   ]
+  ]
+ },
+ "perda": "nado 57% · saída 16% · viradas 21%",
+ "validacao": {
+  "geral_match": 65,
+  "geral_total": 71
+ }
+}

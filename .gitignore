@@ -1,0 +1,17 @@
+node_modules/
+.tmp/
+.dados-dev/
+dados/brutos/
+test-results/
+playwright-report/
+tests/capturas/atual/
+*.db
+*.db-*
+.env
+dados/__pycache__/
+entregas/**/*.aux
+entregas/**/*.fdb_latexmk
+entregas/**/*.fls
+entregas/**/*.log
+entregas/**/*.out
+video/etapa1/
