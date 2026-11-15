@@ -6,7 +6,9 @@
 
 Monte seu nadador, nade contra os finalistas reais e investigue as provas com visões coordenadas.
 
-[**raia.jaderlouis.com.br**](https://raia.jaderlouis.com.br) · Projeto de Visualização Computacional · ICMC-USP · 2026
+[**raia.jaderlouis.com.br**](https://raia.jaderlouis.com.br) · [Vídeo da 1ª entrega](https://www.youtube.com/watch?v=95Qi5o8GiNw) · [Relatório (PDF)](entregas/etapa1/relatorio.pdf)
+
+Jáder Louis de Souza Gonçalves (nº USP 17753116) · SCC5836 Visualização Computacional, prof. Jean R. Ponciano · ICMC-USP, 2026
 
 ![Tela inicial da RAIA: arena 3D com o título e os números da base](docs/img/inicio.jpg)
 
@@ -16,7 +18,7 @@ Monte seu nadador, nade contra os finalistas reais e investigue as provas com vi
 
 ## Sumário
 
-- [Entregas: release-1 e release-2](#entregas-release-1-e-release-2)
+- [Entregas](#entregas)
 - [Propósito](#propósito)
 - [Questões investigadas](#questões-investigadas)
 - [O conjunto de dados](#o-conjunto-de-dados)
@@ -27,16 +29,21 @@ Monte seu nadador, nade contra os finalistas reais e investigue as provas com vi
 - [Arquitetura](#arquitetura)
 - [Rodar localmente](#rodar-localmente)
 - [Testes](#testes)
-- [Publicação](#publicação)
+- [Moderação do ranking](#moderação-do-ranking)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Limitações](#limitações)
 
-## Entregas: release-1 e release-2
+## Entregas
 
-O projeto é entregue em duas etapas, e a variável `RAIA_RELEASE` define o que a interface mostra.
+| Etapa | Data | Material |
+|---|---|---|
+| 1ª entrega | 15/11/2026 | [relatório](entregas/etapa1/relatorio.pdf) ([fonte LaTeX](entregas/etapa1/relatorio.tex)), [vídeo](https://www.youtube.com/watch?v=95Qi5o8GiNw), código e dados deste repositório |
+| 2ª entrega | 03/12/2026 | em preparação |
 
-- **release-1 (1ª entrega, 15/11/2026)** é a versão no ar e a que esta etapa avalia: Início, Vestiário, Arena 3D com placar e câmeras, Raio-X, Método (Q1, Q2, Q3 e Q6) e o Observatório com Enxame, Nível, Ranking e Equipe × prova.
-- **release-2 (2ª entrega, 03/12/2026)**: a Calculadora, as visões Perfis, Coordenadas, Combinações e Concentração (Q4 e Q5), as duas visões lado a lado com seleção ligada, o pincel no Enxame e os gráficos sincronizados da Arena **já estão implementados neste código**, mas ficam desligados na release-1. Os pontos de corte estão marcados com comentários `release-2` no código.
+A variável `RAIA_RELEASE` define o que a interface mostra.
+
+- **release-1 (1ª entrega)** é a versão no ar: Início, Vestiário, Arena 3D com placar e câmeras, Raio-X, Método (Q1, Q2, Q3 e Q6) e o Observatório com Enxame, Nível, Ranking e Equipe × prova.
+- **release-2 (2ª entrega)**: a Calculadora, as visões Perfis, Coordenadas, Combinações e Concentração (Q4 e Q5), as duas visões lado a lado com seleção ligada, o pincel no Enxame e os gráficos sincronizados da Arena já estão no código e ficam desligados na release-1 pela constante `R2` de `web/RAIA.dc.html`.
 
 Este README descreve o projeto completo; as seções sobre as partes acima valem a partir da release-2.
 
@@ -239,7 +246,8 @@ Requisitos: Node 22 ou mais novo.
 git clone https://github.com/Prism411/raia-scc5836.git && cd raia-scc5836
 npm install                 # ferramentas de teste e vendorização
 (cd server && npm install)  # servidor
-npm run dev                 # http://localhost:8080
+npm run dev                 # http://localhost:8080 (release-1)
+RAIA_RELEASE=2 npm run dev  # com as partes da 2ª entrega ligadas
 ```
 
 Só a interface, sem conta nem ranking, também funciona como arquivo estático:
@@ -284,6 +292,8 @@ web/                 interface servida
   data/natacao.json  base consolidada
   vendor/            React, three.js, d3 e fontes locais
 server/              API Fastify + SQLite e testes
+dados/               construção do conjunto (construir.py, comparar.py, FONTES.md)
+entregas/etapa1/     relatório da 1ª entrega (PDF, LaTeX e figuras)
 tests/               fumaça, conta e comparação visual
 scripts/             vendorização e guarda de CPF
 docs/img/            imagens deste README
