@@ -44,6 +44,20 @@
 \small SCC5836 --- Visualização Computacional --- ICMC-USP --- 2026/2}
 \date{15 de novembro de 2026}
 
+
+\definecolor{destaque}{HTML}{FFD23F}
+\newcommand{\anotada}[3][\linewidth]{{\setlength{\fboxsep}{2pt}\setlength{\fboxrule}{0.7pt}%
+  \fcolorbox{raia!40}{white}{\begin{tikzpicture}
+    \node[inner sep=0, anchor=south west] (img) {\includegraphics[width=\dimexpr#1-5.4pt\relax]{#2}};
+    \begin{scope}[x={(img.south east)}, y={(img.north west)}]#3\end{scope}
+  \end{tikzpicture}}}}
+\newcommand{\destaque}[5]{%
+  \draw[destaque, line width=1.1pt, rounded corners=1.5pt] ({#1},{1-#2}) rectangle ({#3},{1-#4});
+  \node[circle, fill=destaque, draw=raia, line width=0.4pt, text=raia, font=\sffamily\bfseries\scriptsize,
+        inner sep=0pt, minimum size=3.6mm] at ({#1},{1-#2}) {#5};}
+\DeclareRobustCommand{\marca}[1]{\tikz[baseline=-0.6ex]\node[circle, fill=destaque, draw=raia, line width=0.3pt, text=raia,
+  font=\sffamily\bfseries\tiny, inner sep=0pt, minimum size=2.9mm]{#1};}
+
 \begin{document}
 \maketitle
 \thispagestyle{empty}
@@ -144,7 +158,6 @@ planilha, e o InterUSP 2026 e o TUSCA 2023--2026 vêm em PDF (108 arquivos). O s
   seta/.style={->, draw=raia!70, line width=0.9pt},
   painel/.style={rounded corners=4pt, draw=raia!25, fill=raia!3, line width=0.6pt}
 ]
-% ---------- ícones ----------
 \tikzset{
   pics/doc/.style={code={
     \draw[raia, line width=0.6pt, fill=white] (-0.17,-0.22) -- (-0.17,0.22) -- (0.08,0.22) -- (0.17,0.13) -- (0.17,-0.22) -- cycle;
@@ -185,13 +198,11 @@ planilha, e o InterUSP 2026 e o TUSCA 2023--2026 vêm em PDF (108 arquivos). O s
     \draw[raia, line width=0.7pt] (0,-0.12) -- (0,-0.19); \draw[raia, line width=0.7pt] (-0.09,-0.19) -- (0.09,-0.19);
   }}
 }
-% ---------- fontes ----------
 \node[painel, minimum width=20mm, minimum height=34mm] (fontes) at (0,0) {};
 \node[tit, anchor=north] at (fontes.north) [yshift=-1.2mm] {Fontes};
 \pic[pic text=PDF, scale=1.6] at (-0.4,0.42) {doc=red!70!black};
 \pic[pic text=CSV, scale=1.6] at (0.4,0.42) {doc=green!45!black};
 \node[sub, anchor=north] at (0,-0.1) {108 súmulas PDF\\e a planilha do\\InterUSP 2023--25\\(EBAN Swim)};
-% ---------- etapas ----------
 \foreach \i/\icone/\t/\s in {
   1/doc/Extração/{pdftotext e\\expressões regulares},
   2/texto/Codificação/{acentos quebrados\\e letras cirílicas},
@@ -209,12 +220,10 @@ planilha, e o InterUSP 2026 e o TUSCA 2023--2026 vêm em PDF (108 arquivos). O s
 }
 \foreach \a/\b in {1/2,2/3,3/4,4/5,5/6,6/7} \draw[seta] (e\a) -- (e\b);
 \draw[seta] (fontes.east |- e1) -- (e1);
-% faixa das etapas
 \begin{scope}[on background layer]
   \node[painel, fill=raia!2, fit=(e1)(e7)(t1)(t7), inner xsep=2mm, inner ysep=7mm, yshift=-1.5mm] (faixa) {};
 \end{scope}
 \node[font=\sffamily\bfseries\tiny, text=raia!70, anchor=south west] at (faixa.north west) {dados/construir.py};
-% ---------- saída ----------
 \node[painel, minimum width=22mm, minimum height=34mm, right=5mm of faixa.east, anchor=west] (saida) {};
 \node[tit, anchor=north] at (saida.north) [yshift=-1.2mm] {Saída};
 \pic[pic text=JSON, scale=1.6] at ($(saida.center)+(-0.5,0.42)$) {doc=raia};
@@ -289,17 +298,15 @@ cada competição.
 
 \begin{figure}[H]
 \centering
-\moldura[.8\linewidth]{obs-ridge.png}
-\caption{Nível (Q1): densidade do Índice Técnico por edição, InterUSP em azul e TUSCA em amarelo; a linha
-tracejada liga as medianas.}
+\anotada[.8\linewidth]{obs-ridge.png}{\destaque{0.005}{0.07}{0.40}{0.135}{1}\destaque{0.535}{0.255}{0.595}{0.61}{2}\destaque{0.005}{0.70}{0.995}{0.79}{3}}
+\caption{Nível (Q1): densidade do Índice Técnico por edição, InterUSP em azul e TUSCA em amarelo. \marca{1} Filtros de competição, ano, sexo e prova. \marca{2} A linha tracejada liga as medianas do InterUSP: 556, 512 e 524. \marca{3} TUSCA 2024: a distribuição inteira desce, inclusive o topo.}
 \label{fig:nivel}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\moldura[.8\linewidth]{obs-swarm.png}
-\caption{Enxame (Q2): cada ponto é um resultado, posicionado pelo IT na linha da sua prova e colorido pela
-competição. Passar o mouse mostra atleta, tempo e colocação; clicar abre a ficha do atleta.}
+\anotada[.8\linewidth]{obs-swarm.png}{\destaque{0.005}{0.225}{0.995}{0.285}{1}\destaque{0.31}{0.075}{0.50}{0.105}{2}\destaque{0.86}{0.30}{0.995}{0.35}{3}}
+\caption{Enxame (Q2): cada ponto é um resultado, colorido pela competição. \marca{1} Uma linha por prova, com os resultados pelo IT. \marca{2} Modo de cor (competição, equipe ou estilo). \marca{3} Os melhores resultados, com IT perto de 1.000. Passar o mouse mostra atleta e tempo; clicar abre a ficha.}
 \label{fig:enxame}
 \end{figure}
 
@@ -308,13 +315,13 @@ competição. Passar o mouse mostra atleta, tempo e colocação; clicar abre a f
 mais disputado: POLI em 2023, UFSCAR em 2024 e 2025 e LAP em 2026, saindo do meio da tabela. A matriz equipe
 $\times$ prova (Figura~\ref{fig:matriz}) mostra a fatia dos pontos de cada prova que cada equipe conquistou;
 ordenada por similaridade, ela revela blocos de especialização: a CAASO soma 35\% dos pontos do 200 m livre e
-38\% do 400 m livre, enquanto a POLI lidera as provas de 50 m, o 100 m medley e o 4$\times$50 m livre, e a
+38\% do 400 m livre, enquanto a POLI lidera três das quatro provas de 50 m (no 50 m livre fica a dois pontos da CAASO), o 100 m medley e o 4$\times$50 m livre, e a
 UFSCAR aparece entre as três primeiras em quase todas as provas sem liderar nenhuma isoladamente.
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{.49\linewidth}\moldura{obs-bump.png}\caption{Ranking das equipes por edição.}\label{fig:ranking}\end{subfigure}\hfill
-\begin{subfigure}{.49\linewidth}\moldura{obs-matrix.png}\caption{Fatia dos pontos de cada prova por equipe.}\label{fig:matriz}\end{subfigure}
+\begin{subfigure}{.49\linewidth}\anotada{obs-bump.png}{\destaque{0.07}{0.21}{0.95}{0.30}{1}\destaque{0.07}{0.315}{0.95}{0.345}{2}\destaque{0.07}{0.605}{0.15}{0.64}{3}\destaque{0.60}{0.60}{0.93}{0.80}{4}}\caption{Ranking por edição. \marca{1} InterUSP: POLI e MED PINHEIROS alternam o 1º lugar. \marca{2} MED RIBEIRÃO sempre em 3º. \marca{3} TUSCA 2023: POLI campeã. \marca{4} LAP sobe do 5º ao 1º lugar em 2026.}\label{fig:ranking}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\anotada{obs-matrix.png}{\destaque{0.185}{0.16}{0.29}{0.19}{1}\destaque{0.62}{0.27}{0.80}{0.295}{2}\destaque{0.18}{0.30}{0.45}{0.33}{3}}\caption{Pontos por equipe e prova. \marca{1} Ordem pelo total ou por similaridade. \marca{2} CAASO lidera o 200 e o 400 m livre. \marca{3} POLI lidera o 50 m costas, o 50 m peito e o 50 m borboleta.}\label{fig:matriz}\end{subfigure}
 \caption{Equipes (Q3).}
 \end{figure}
 
@@ -329,16 +336,16 @@ transmissão, placar e telemetria ao vivo.
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{.49\linewidth}\moldura{raiox-fita.png}\caption{Fita de fases de uma final.}\end{subfigure}\hfill
-\begin{subfigure}{.49\linewidth}\moldura{raiox-todas.png}\caption{Saída até 15 m em todas as provas.}\end{subfigure}
+\begin{subfigure}{.49\linewidth}\anotada{raiox-fita.png}{\destaque{0.005}{0.165}{0.995}{0.225}{1}\destaque{0.10}{0.325}{0.83}{0.355}{2}\destaque{0.10}{0.555}{0.94}{0.585}{3}}\caption{Fita de uma final. \marca{1} Telemetria do nadador escolhido. \marca{2} Referência de elite (PRO). \marca{3} As fases de cada finalista: reação, voo, submerso e nado.}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\anotada{raiox-todas.png}{\destaque{0.635}{0.12}{0.69}{0.15}{1}\destaque{0.015}{0.365}{0.045}{0.405}{2}\destaque{0.052}{0.21}{0.072}{0.55}{3}}\caption{Saída até 15 m em todas as provas. \marca{1} Métrica comparada. \marca{2} Referência PRO. \marca{3} Mediana da prova.}\end{subfigure}
 \caption{Raio-X (Q4).}
 \label{fig:raiox}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{.49\linewidth}\moldura{arena.png}\caption{Arena 3D durante a final.}\label{fig:arena}\end{subfigure}\hfill
-\begin{subfigure}{.49\linewidth}\moldura{ficha-atleta.png}\caption{Ficha do atleta.}\label{fig:ficha}\end{subfigure}
+\begin{subfigure}{.49\linewidth}\anotada{arena.png}{\destaque{0.01}{0.085}{0.29}{0.125}{1}\destaque{0.005}{0.185}{0.18}{0.47}{2}\destaque{0.80}{0.085}{0.995}{0.41}{3}\destaque{0.245}{0.935}{0.755}{0.985}{4}}\caption{Arena 3D. \marca{1} Placar e cronômetro. \marca{2} Telemetria ao vivo. \marca{3} Classificação parcial. \marca{4} Câmeras e controles.}\label{fig:arena}\end{subfigure}\hfill
+\begin{subfigure}{.49\linewidth}\anotada{ficha-atleta.png}{\destaque{0.725}{0.08}{0.995}{0.27}{1}\destaque{0.725}{0.28}{0.995}{0.52}{2}\destaque{0.725}{0.54}{0.995}{0.79}{3}}\caption{Ficha do atleta. \marca{1} Medalhas e pontos. \marca{2} Trajetória do IT por ano e competição. \marca{3} Perfil por estilo.}\label{fig:ficha}\end{subfigure}
 \caption{A experiência e o detalhe sob demanda.}
 \end{figure}
 
